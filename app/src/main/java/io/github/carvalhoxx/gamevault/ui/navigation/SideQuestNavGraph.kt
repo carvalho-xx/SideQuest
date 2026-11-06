@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -30,16 +32,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import io.github.carvalhoxx.gamevault.ui.components.AppIcons
 import io.github.carvalhoxx.gamevault.ui.screens.dashboard.DashboardScreen
 import io.github.carvalhoxx.gamevault.ui.screens.details.GameDetailScreen
 import io.github.carvalhoxx.gamevault.ui.screens.library.LibraryScreen
@@ -54,12 +57,12 @@ import io.github.carvalhoxx.gamevault.ui.viewmodel.GameVaultViewModel
 enum class BottomNavTab(
     val route: String,
     val label: String,
-    val iconSymbol: String
+    val icon: ImageVector
 ) {
-    DASHBOARD("dashboard", "Dashboard", "⊞"),
-    LIBRARY("library", "Library", "|||\\"),
-    PLANNER("planner", "Planner", "📅"),
-    WISHLIST("wishlist", "Wishlist", "♡")
+    DASHBOARD("dashboard", "Início", AppIcons.Dashboard),
+    LIBRARY("library", "Biblioteca", AppIcons.Library),
+    PLANNER("planner", "Agenda", AppIcons.Calendar),
+    WISHLIST("wishlist", "Desejos", AppIcons.Heart)
 }
 
 @Composable
@@ -70,6 +73,13 @@ fun SideQuestNavGraph(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: BottomNavTab.DASHBOARD.route
+    val highlightedTabRoute = remember(currentRoute, backStackEntry) {
+        if (BottomNavTab.entries.any { it.route == currentRoute }) {
+            currentRoute
+        } else {
+            navController.previousBackStackEntry?.destination?.route ?: BottomNavTab.DASHBOARD.route
+        }
+    }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -96,14 +106,19 @@ fun SideQuestNavGraph(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             SideQuestBottomBar(
-                currentRoute = currentRoute,
+                currentRoute = highlightedTabRoute,
                 onSelectTab = { tab ->
-                    navController.navigate(tab.route) {
-                        popUpTo(BottomNavTab.DASHBOARD.route) {
-                            saveState = true
+                    if (currentRoute.startsWith("game_details")) {
+                        navController.popBackStack()
+                    }
+                    if (highlightedTabRoute != tab.route) {
+                        navController.navigate(tab.route) {
+                            popUpTo(BottomNavTab.DASHBOARD.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
                 }
             )
@@ -185,15 +200,15 @@ fun SideQuestNavGraph(
 
             composable(BottomNavTab.PLANNER.route) {
                 PhasePlaceholderScreen(
-                    title = "Smart Day One Planner",
-                    subtitle = "Motor de cronograma completo será expandido na Fase 4 (${dashboardState.dayOneGames.size} lançamentos Day One monitorados)."
+                    title = "Planejador de Lançamentos",
+                    subtitle = "Motor de cronograma completo será expandido na Fase 4 (${dashboardState.dayOneGames.size} lançamentos monitorados)."
                 )
             }
 
             composable(BottomNavTab.WISHLIST.route) {
                 PhasePlaceholderScreen(
-                    title = "Wishlist & GOTY Tiebreaker",
-                    subtitle = "Radar de promoções e Desempate GOTY serão expandidos nas Fases 5 e 6 (${dashboardState.wishlistGames.size} itens na Wishlist)."
+                    title = "Lista de Desejos e Jogo do Ano",
+                    subtitle = "Radar de promoções e Desempate de Jogo do Ano serão expandidos nas Fases 5 e 6 (${dashboardState.wishlistGames.size} itens na lista de desejos)."
                 )
             }
         }
@@ -237,11 +252,11 @@ private fun SideQuestBottomBar(
                             .background(if (isSelected) NeonPurplePrimary else Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = tab.iconSymbol,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) Color(0xFF140526) else TextSecondary
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            tint = if (isSelected) Color(0xFF140526) else TextSecondary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     Text(

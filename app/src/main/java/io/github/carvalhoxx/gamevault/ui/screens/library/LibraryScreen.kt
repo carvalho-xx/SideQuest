@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -26,7 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -51,6 +48,7 @@ import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
+import io.github.carvalhoxx.gamevault.ui.components.AppIcons
 import io.github.carvalhoxx.gamevault.ui.components.BacklogRouletteDialog
 import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.components.GameFormDialog
@@ -109,7 +107,7 @@ fun LibraryScreen(
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Barra de Busca + Botão de Filtros (02_library_backlog.png)
+        // 1. Barra de Busca + Botão de Filtros com ícones vetoriais padronizados
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -120,12 +118,19 @@ fun LibraryScreen(
                 onValueChange = onSearchQueryChange,
                 placeholder = {
                     Text(
-                        text = "Search library & backlog...",
-                        color = TextMuted
+                        text = "Buscar na biblioteca e fila...",
+                        color = TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 leadingIcon = {
-                    Text("🔍", fontSize = 16.sp)
+                    Icon(
+                        imageVector = AppIcons.Search,
+                        contentDescription = "Buscar",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(50),
@@ -143,23 +148,44 @@ fun LibraryScreen(
             IconButton(
                 onClick = { showAdvancedFilters = !showAdvancedFilters },
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (showAdvancedFilters) NeonPurplePrimary.copy(alpha = 0.25f) else DeepSlateSurface)
+                    .background(if (showAdvancedFilters) NeonPurplePrimary.copy(alpha = 0.25f) else DeepSlateCard)
                     .border(
                         1.dp,
                         if (showAdvancedFilters) NeonPurplePrimary else DeepSlateElevated,
                         CircleShape
                     )
             ) {
-                Text("⚙", fontSize = 18.sp, color = TextPrimary)
+                Icon(
+                    imageVector = AppIcons.FilterTune,
+                    contentDescription = "Filtros",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { showAddGameDialog = true },
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(DeepSlateCard)
+                    .border(1.5.dp, NeonPurplePrimary, CircleShape)
+            ) {
+                Icon(
+                    imageVector = AppIcons.Add,
+                    contentDescription = "Adicionar jogo",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
 
-        // 2. Linha de Ações: Importador CSV Temporário + Roleta do Backlog (02_library_backlog.png)
+        // 2. Linha de Ações: Importador CSV + Roleta da Fila
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
@@ -169,14 +195,16 @@ fun LibraryScreen(
                     )
                 },
                 shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = "📥 Importar CSV",
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = NeonPurpleGlow,
                         fontWeight = FontWeight.SemiBold
-                    )
+                    ),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
@@ -184,14 +212,17 @@ fun LibraryScreen(
                 onClick = onSpinRoulette,
                 colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary),
                 shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "🎲 Backlog Roulette (Pick for me)",
+                    text = "🎲 Roleta da Fila (Sortear)",
                     style = MaterialTheme.typography.labelLarge.copy(
                         color = Color(0xFF140526),
                         fontWeight = FontWeight.ExtraBold
-                    )
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -219,14 +250,19 @@ fun LibraryScreen(
                             fontWeight = FontWeight.Bold
                         )
                     )
-                    Text(
-                        text = "+ Adicionar Jogo",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = NeonPurpleGlow,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.clickable { showAddGameDialog = true }
-                    )
+                    if (filterState.selectedPriority != null || filterState.selectedPlatform != null) {
+                        Text(
+                            text = "Limpar filtros",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = NeonPurpleGlow,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = Modifier.clickable {
+                                onSelectPriority(null)
+                                onSelectPlatform(null)
+                            }
+                        )
+                    }
                 }
 
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -245,7 +281,7 @@ fun LibraryScreen(
                                     if (filterState.selectedPriority == tier) null else tier
                                 )
                             },
-                            label = { Text("Tier ${tier.badge}") }
+                            label = { Text("Nível ${tier.badge}") }
                         )
                     }
                 }
@@ -279,18 +315,18 @@ fun LibraryScreen(
             }
         }
 
-        // 3. Abas de Status com Contadores Reais (Playing, Backlog, Day One, Completed, Dropped)
+        // 3. Abas de Status com Contadores Reais em Português
         val statusCounts = remember(allGames) {
             allGames.groupingBy { it.status }.eachCount()
         }
         val statusTabs = listOf(
-            null to "All (${allGames.size})",
-            GameStatus.PLAYING to "Playing (${statusCounts[GameStatus.PLAYING] ?: 0})",
-            GameStatus.BACKLOG to "Backlog (${statusCounts[GameStatus.BACKLOG] ?: 0})",
-            GameStatus.DAY_ONE to "Day One (${statusCounts[GameStatus.DAY_ONE] ?: 0})",
-            GameStatus.COMPLETED to "Completed (${statusCounts[GameStatus.COMPLETED] ?: 0})",
-            GameStatus.DROPPED to "Dropped (${statusCounts[GameStatus.DROPPED] ?: 0})",
-            GameStatus.PAUSED to "Paused (${statusCounts[GameStatus.PAUSED] ?: 0})"
+            null to "Todos (${allGames.size})",
+            GameStatus.PLAYING to "Jogando (${statusCounts[GameStatus.PLAYING] ?: 0})",
+            GameStatus.BACKLOG to "Na Fila (${statusCounts[GameStatus.BACKLOG] ?: 0})",
+            GameStatus.DAY_ONE to "Lançamento (${statusCounts[GameStatus.DAY_ONE] ?: 0})",
+            GameStatus.COMPLETED to "Zerados (${statusCounts[GameStatus.COMPLETED] ?: 0})",
+            GameStatus.DROPPED to "Abandonados (${statusCounts[GameStatus.DROPPED] ?: 0})",
+            GameStatus.PAUSED to "Pausados (${statusCounts[GameStatus.PAUSED] ?: 0})"
         )
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -320,7 +356,7 @@ fun LibraryScreen(
             }
         }
 
-        // 4. Lista de Jogos (Cards fiéis à referência 02_library_backlog.png)
+        // 4. Lista de Jogos
         if (filteredGames.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -340,7 +376,7 @@ fun LibraryScreen(
                         )
                     )
                     Text(
-                        text = "Toque em '📥 Importar CSV' para carregar a planilha do seu amigo ou adicione um novo jogo.",
+                        text = "Toque em '📥 Importar CSV' para carregar sua planilha ou adicione um novo jogo.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                     Button(
@@ -432,7 +468,7 @@ private fun LibraryGameCard(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Linha superior: Tier ou Nota na esquerda + Status na direita
+            // Linha superior: Nível ou Nota na esquerda + Status na direita
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -450,6 +486,8 @@ private fun LibraryGameCard(
                             color = TextSecondary,
                             fontWeight = FontWeight.Medium
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
@@ -495,6 +533,8 @@ private fun LibraryGameCard(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                     )
                 }
@@ -510,6 +550,8 @@ private fun LibraryGameCard(
                                 color = Color(0xFF261A00),
                                 fontWeight = FontWeight.ExtraBold
                             ),
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                         )
                     }
@@ -526,7 +568,7 @@ private fun PriorityOrRatingBadge(game: GameEntity) {
         val formattedRating = if (rating % 1.0f == 0f) {
             rating.toInt().toString()
         } else {
-            String.format(Locale.US, "%.2f", rating).trimEnd('0').trimEnd('.')
+            String.format(Locale.US, "%.2f", rating).trimEnd('0').trimEnd('.').replace('.', ',')
         }
         Surface(
             color = HallOfFameGold.copy(alpha = 0.16f),
@@ -538,11 +580,13 @@ private fun PriorityOrRatingBadge(game: GameEntity) {
             )
         ) {
             Text(
-                text = "👍 $formattedRating/10",
+                text = "★ $formattedRating/10",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = HallOfFameGold,
                     fontWeight = FontWeight.Bold
                 ),
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
@@ -559,11 +603,13 @@ private fun PriorityOrRatingBadge(game: GameEntity) {
             modifier = Modifier.border(1.dp, badgeColor.copy(alpha = 0.7f), RoundedCornerShape(50))
         ) {
             Text(
-                text = "🎲 Tier ${game.priority.badge}",
+                text = "Nível ${game.priority.badge}",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = badgeColor,
                     fontWeight = FontWeight.Bold
                 ),
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }

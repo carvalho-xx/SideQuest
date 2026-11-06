@@ -217,15 +217,14 @@ class GameVaultViewModel(
 
     fun spinBacklogRoulette() {
         val candidates = allGames.value.filter {
-            it.status == GameStatus.BACKLOG || it.status == GameStatus.PAUSED
-        }.ifEmpty {
-            allGames.value
+            it.status == GameStatus.BACKLOG
         }
         if (candidates.isEmpty()) {
-            _statusMessage.value = "Adicione jogos ao Backlog para girar a roleta!"
+            _rouletteWinner.value = null
+            _statusMessage.value = "Nenhum jogo na fila para sortear! Adicione jogos na fila primeiro."
             return
         }
-        // Ponderação por prioridade: Tier S tem peso 4, Tier A peso 3, Tier B peso 2, Tier C peso 1
+        // Ponderação por prioridade: Nível S tem peso 4, Nível A peso 3, Nível B peso 2, Nível C peso 1
         val weightedPool = candidates.flatMap { game ->
             val weight = when (game.priority) {
                 PriorityTier.TIER_S -> 4

@@ -24,7 +24,7 @@ object TimeFormatUtils {
      * Retorna "TBD" quando nulo (ex: jogos Day One ainda não lançados).
      */
     fun formatHltbReferenceOrTbd(seconds: Long?): String {
-        if (seconds == null || seconds <= 0L) return "TBD"
+        if (seconds == null || seconds <= 0L) return "A definir"
         val hours = seconds / 3600L
         val minutes = (seconds % 3600L) / 60L
         return if (minutes > 0L) {
@@ -88,12 +88,12 @@ object TimeFormatUtils {
      * Formata timestamp nullable em data legível ("dd/MM/yyyy") ou "TBD" se nulo.
      */
     fun formatDateOrTbd(timestampMillis: Long?): String {
-        if (timestampMillis == null || timestampMillis <= 0L) return "TBD"
+        if (timestampMillis == null || timestampMillis <= 0L) return "A definir"
         return runCatching {
             val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }
             formatter.format(Date(timestampMillis))
-        }.getOrDefault("TBD")
+        }.getOrDefault("A definir")
     }
 }

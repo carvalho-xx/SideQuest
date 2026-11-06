@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.domain.model.DurationResolution
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
+import io.github.carvalhoxx.gamevault.ui.components.AppIcons
 import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.components.GameFormDialog
 import io.github.carvalhoxx.gamevault.ui.components.ManualTimePickerDialog
@@ -90,14 +94,19 @@ fun DashboardScreen(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // 1. Cabeçalho SIDEQUEST (01_dashboard_home.png)
+        // 1. Cabeçalho SIDEQUEST
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
                         text = "🎮  S I D E Q U E S T",
                         style = MaterialTheme.typography.labelMedium.copy(
@@ -107,7 +116,7 @@ fun DashboardScreen(
                         )
                     )
                     Text(
-                        text = "Your next chapter.",
+                        text = "Seu próximo capítulo.",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.ExtraBold
@@ -119,36 +128,29 @@ fun DashboardScreen(
                     )
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                IconButton(
+                    onClick = { showAddGameDialog = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(DeepSlateCard)
+                        .border(1.5.dp, NeonPurplePrimary, CircleShape)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(DeepSlateCard)
-                            .border(1.5.dp, NeonPurplePrimary, CircleShape)
-                            .clickable { showAddGameDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "+",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                color = NeonPurpleGlow,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
+                    Icon(
+                        imageVector = AppIcons.Add,
+                        contentDescription = "Adicionar jogo",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }
 
-        // 2. Seção Currently Playing (Card Hero com Cronômetro HH:MM:SS e Comparador Flexível)
+        // 2. Seção Jogando Agora (Card Hero com Cronômetro HH:MM:SS e Comparador Flexível)
         item {
             SectionHeader(
-                title = "Currently Playing",
-                actionText = "Library →",
+                title = "Jogando Agora",
+                actionText = "Biblioteca →",
                 onActionClick = onNavigateToLibrary
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -170,12 +172,12 @@ fun DashboardScreen(
             }
         }
 
-        // 3. Seção Day One Radar
+        // 3. Seção Radar de Lançamentos
         item {
             SectionHeader(
-                title = "Day One Radar",
-                subtitle = "Big releases. A little room to plan.",
-                actionText = "Planner →",
+                title = "Radar de Lançamentos",
+                subtitle = "Grandes estreias. Espaço para planejar.",
+                actionText = "Agenda →",
                 onActionClick = onNavigateToPlanner
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -203,14 +205,14 @@ fun DashboardScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Nenhum lançamento Day One monitorado ainda",
+                            text = "Nenhum lançamento monitorado ainda",
                             style = MaterialTheme.typography.titleSmall,
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Toque para cadastrar jogos aguardados (ex: GTA VI, Ghost of Yōtei) — suporte total a duração TBD.",
+                            text = "Toque para cadastrar jogos aguardados (ex: GTA VI, Ghost of Yōtei) — suporte total a duração a definir.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
@@ -219,13 +221,13 @@ fun DashboardScreen(
             }
         }
 
-        // 4. Seção Hall of Fame (11/10 Life-Changing Games) & Personal GOTY
+        // 4. Seção Hall da Fama (Jogos 11/10) e Jogo do Ano Pessoal
         item {
             SectionHeader(
-                title = "Hall of Fame",
-                subtitle = "11/10 Life-Changing Games",
+                title = "Hall da Fama",
+                subtitle = "Jogos 11/10 que Marcaram a Vida",
                 titleColor = HallOfFameGold,
-                actionText = "View all →",
+                actionText = "Ver todos →",
                 onActionClick = onNavigateToLibrary
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -258,7 +260,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Avalie um jogo com a nota especial 11/10 (Life-Changing) nos detalhes para imortalizá-lo aqui.",
+                            text = "Avalie um jogo com a nota especial 11/10 (Jogo da Vida) nos detalhes para eternizá-lo aqui.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
@@ -314,7 +316,11 @@ private fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -335,6 +341,8 @@ private fun SectionHeader(
                 color = NeonPurplePrimary,
                 fontWeight = FontWeight.SemiBold
             ),
+            maxLines = 1,
+            softWrap = false,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onActionClick)
@@ -343,6 +351,7 @@ private fun SectionHeader(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CurrentlyPlayingHeroCard(
     game: GameEntity,
@@ -368,13 +377,13 @@ private fun CurrentlyPlayingHeroCard(
     }
 
     val paceLabel = when {
-        hltbTargetSeconds == null -> "On your own pace • HLTB TBD"
+        hltbTargetSeconds == null -> "No seu próprio ritmo • Duração a definir"
         isBeyondHltb -> {
             val extraH = extraSecondsBeyond / 3600L
             val extraM = (extraSecondsBeyond % 3600L) / 60L
             "Explorando além da média (+${extraH}h ${extraM}m)"
         }
-        else -> "On your own pace"
+        else -> "No seu próprio ritmo"
     }
 
     Box(
@@ -399,7 +408,7 @@ private fun CurrentlyPlayingHeroCard(
             .padding(20.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            // Badge topo: IN PROGRESS
+            // 1. Linha de topo: Status de sessão + Prioridade
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -410,26 +419,33 @@ private fun CurrentlyPlayingHeroCard(
                     shape = RoundedCornerShape(50)
                 ) {
                     Text(
-                        text = if (isTimerRunning) "● LIVE SESSION ACTIVE" else "▷ IN PROGRESS",
+                        text = if (isTimerRunning) "● SESSÃO AO VIVO" else "▷ EM ANDAMENTO",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NeonPurpleGlow,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 0.8.sp
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
 
                 Text(
-                    text = "Priority ${game.priority.badge}",
-                    style = MaterialTheme.typography.labelSmall.copy(color = HallOfFameGold)
+                    text = "Prioridade ${game.priority.badge}",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = HallOfFameGold,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
-            // Título + Plataforma/Gênero/Meta
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // 2. Título + Plataforma/Gênero/Meta em FlowRow (sem quebrar feio)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = game.title.uppercase(),
+                    text = "FOCO PRINCIPAL",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = HallOfFameGold,
                         letterSpacing = 1.4.sp,
@@ -443,9 +459,9 @@ private fun CurrentlyPlayingHeroCard(
                         fontWeight = FontWeight.ExtraBold
                     )
                 )
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SmallTagPill(text = game.platform, backgroundColor = DeepSlateElevated)
                     if (game.genres.isNotBlank()) {
@@ -455,14 +471,14 @@ private fun CurrentlyPlayingHeroCard(
                         )
                     }
                     SmallTagPill(
-                        text = "${game.targetCompletionStyle.shortLabel} Goal",
+                        text = "Meta: ${game.targetCompletionStyle.shortLabel}",
                         backgroundColor = NeonPurpleSecondary.copy(alpha = 0.28f),
                         textColor = NeonPurpleGlow
                     )
                 }
             }
 
-            // Comparador Flexível de Tempo (Sem Barra Rígida que quebra acima de 100%)
+            // 3. Comparador Flexível de Tempo bem distribuído
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -473,24 +489,22 @@ private fun CurrentlyPlayingHeroCard(
                     val m = (liveTotalSeconds % 3600L) / 60L
                     val s = liveTotalSeconds % 60L
                     Text(
-                        text = "${h}h ${String.format("%02d", m)}m ${String.format("%02d", s)}s",
+                        text = "${h}h ${String.format(Locale.US, "%02d", m)}m ${String.format(Locale.US, "%02d", s)}s",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.ExtraBold
-                        )
+                        ),
+                        maxLines = 1,
+                        softWrap = false
                     )
                     SmallTagPill(
-                        text = paceLabel,
-                        backgroundColor = if (isBeyondHltb) {
-                            HallOfFameGold.copy(alpha = 0.2f)
-                        } else {
-                            NeonPurplePrimary.copy(alpha = 0.2f)
-                        },
-                        textColor = if (isBeyondHltb) HallOfFameGold else NeonPurpleGlow
+                        text = "Média HLTB: ${TimeFormatUtils.formatHltbReferenceOrTbd(hltbTargetSeconds)}",
+                        backgroundColor = NeonPurplePrimary.copy(alpha = 0.18f),
+                        textColor = NeonPurpleGlow
                     )
                 }
 
-                // Indicador visual suave (Se passar de 100% do HLTB, brilha em dourado/roxo sem quebrar!)
+                // Indicador visual suave (Se passar de 100% do HLTB, brilha em dourado/roxo sem quebrar)
                 val fillFraction = when {
                     hltbTargetSeconds == null || hltbTargetSeconds <= 0L -> 0.35f
                     liveTotalSeconds >= hltbTargetSeconds -> 1f
@@ -518,28 +532,18 @@ private fun CurrentlyPlayingHeroCard(
                     )
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SmallTagPill(
-                        text = TimeFormatUtils.formatSecondsToHhMmSs(liveTotalSeconds),
-                        backgroundColor = DeepSlateElevated,
-                        textColor = TextPrimary
-                    )
-                    Text(
-                        text = "vs",
-                        style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
-                    )
-                    SmallTagPill(
-                        text = "HLTB Avg: ${TimeFormatUtils.formatHltbReferenceOrTbd(hltbTargetSeconds)}",
-                        backgroundColor = NeonPurplePrimary.copy(alpha = 0.18f),
-                        textColor = NeonPurpleGlow
-                    )
-                }
+                SmallTagPill(
+                    text = paceLabel,
+                    backgroundColor = if (isBeyondHltb) {
+                        HallOfFameGold.copy(alpha = 0.2f)
+                    } else {
+                        DeepSlateElevated
+                    },
+                    textColor = if (isBeyondHltb) HallOfFameGold else TextSecondary
+                )
             }
 
-            // Botão Live Session Timer + Botão Input Manual Exato (✎)
+            // 4. Botão de Sessão ao Vivo + Botão de Tempo Manual (Ícone padronizado)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -557,14 +561,16 @@ private fun CurrentlyPlayingHeroCard(
                     val sessionFormatted = TimeFormatUtils.formatSecondsToHhMmSs(currentSessionSeconds)
                     Text(
                         text = if (isTimerRunning) {
-                            "⏹ Stop Session • $sessionFormatted"
+                            "⏹ Parar Sessão • $sessionFormatted"
                         } else {
-                            "▶ Start Session Timer • 00:00:00"
+                            "▶ Iniciar Sessão"
                         },
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = Color(0xFF140526),
                             fontWeight = FontWeight.ExtraBold
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -573,10 +579,15 @@ private fun CurrentlyPlayingHeroCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(DeepSlateElevated)
-                        .border(1.dp, NeonPurplePrimary.copy(alpha = 0.5f), CircleShape)
+                        .background(DeepSlateCard)
+                        .border(1.dp, DeepSlateElevated, CircleShape)
                 ) {
-                    Text("✎", color = TextPrimary, fontSize = 18.sp)
+                    Icon(
+                        imageVector = AppIcons.Edit,
+                        contentDescription = "Editar tempo manualmente",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }
@@ -607,7 +618,7 @@ private fun EmptyPlayingHeroCard(
                 )
             )
             Text(
-                text = "Adicione um jogo como 'Jogando' ou abra a Biblioteca para importar a planilha CSV ou girar a Roleta do Backlog.",
+                text = "Adicione um jogo como 'Jogando' ou abra a Biblioteca para importar sua planilha CSV ou girar a Roleta da Fila.",
                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -639,12 +650,12 @@ private fun DayOneRadarCard(
     val countdownText = remember(game.releaseDate, nowMillis) {
         val release = game.releaseDate
         if (release == null || release <= 0L) {
-            "🕒 Data TBD"
+            "🕒 Data a definir"
         } else {
             val diffMillis = (release - nowMillis).coerceAtLeast(0L)
             val days = diffMillis / (1000L * 60L * 60L * 24L)
             val hours = (diffMillis / (1000L * 60L * 60L)) % 24L
-            "🕒 ${days}d : ${String.format("%02d", hours)}h"
+            "🕒 ${days}d : ${String.format(Locale.US, "%02d", hours)}h"
         }
     }
 
@@ -708,7 +719,7 @@ private fun DayOneRadarCard(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "⚠ Duration TBD • Schedule Lock on Release",
+                        text = "⚠ Duração a definir • Reserva no lançamento",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NeonPurpleGlow,
                             fontSize = 10.sp
@@ -724,7 +735,7 @@ private fun DayOneRadarCard(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "📅 Space in your schedule (~${hours}h)",
+                        text = "📅 Espaço na agenda (~${hours}h)",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = HallOfFameGold,
                             fontSize = 10.sp
@@ -786,18 +797,26 @@ private fun HallOfFameCard(
             overflow = TextOverflow.Ellipsis
         )
 
-        Text(
-            text = "\"${game.coreMemoryNote ?: "Um jogo transformador que marcou minha história."}\"",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = TextPrimary.copy(alpha = 0.9f),
-                fontStyle = FontStyle.Italic
-            ),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        val memoryNote = game.coreMemoryNote?.trim()
+        if (!memoryNote.isNullOrEmpty()) {
+            Text(
+                text = "\"$memoryNote\"",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = TextPrimary.copy(alpha = 0.9f),
+                    fontStyle = FontStyle.Italic
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
+        val footerText = if (game.completionDate != null && game.completionDate > 0L) {
+            "ZERADO EM $completedDateStr • ${hoursSpent}H JOGADAS"
+        } else {
+            "${hoursSpent}H JOGADAS"
+        }
         Text(
-            text = "FINISHED $completedDateStr • ${hoursSpent}H WELL SPENT",
+            text = footerText,
             style = MaterialTheme.typography.labelSmall.copy(
                 color = HallOfFameGold.copy(alpha = 0.85f),
                 fontSize = 10.sp,
@@ -835,7 +854,7 @@ private fun PersonalGotyBannerCard(
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
-                text = "PERSONAL GOTY",
+                text = "JOGO DO ANO PESSOAL",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = HallOfFameGold,
                     fontWeight = FontWeight.ExtraBold,
@@ -851,12 +870,15 @@ private fun PersonalGotyBannerCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = game.coreMemoryNote ?: "Eleito o melhor jogo do ano na sua jornada.",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            val memoryNote = game.coreMemoryNote?.trim()
+            if (!memoryNote.isNullOrEmpty()) {
+                Text(
+                    text = memoryNote,
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Text("🏆", fontSize = 26.sp)
@@ -879,6 +901,8 @@ private fun SmallTagPill(
                 color = textColor,
                 fontWeight = FontWeight.Medium
             ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }

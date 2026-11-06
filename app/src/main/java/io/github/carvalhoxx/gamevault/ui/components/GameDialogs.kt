@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,6 +60,9 @@ import io.github.carvalhoxx.gamevault.ui.theme.NeonPurpleSecondary
 import io.github.carvalhoxx.gamevault.ui.theme.TextMuted
 import io.github.carvalhoxx.gamevault.ui.theme.TextPrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextSecondary
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 
 /**
@@ -87,7 +88,7 @@ fun GameCoverArtwork(
         .filter { it.isNotBlank() }
         .take(2)
         .joinToString("") { it.first().uppercase() }
-        .ifEmpty { "SQ" }
+        .ifEmpty { "GV" }
 
     val borderColor = if (isHallOfFame) HallOfFameGold else NeonPurplePrimary.copy(alpha = 0.45f)
 
@@ -139,8 +140,8 @@ fun ManualTimePickerDialog(
     val initS = (initialSeconds % 60L).coerceIn(0L, 59L)
 
     var hoursText by remember { mutableStateOf(initH.toString()) }
-    var minutesText by remember { mutableStateOf(String.format("%02d", initM)) }
-    var secondsText by remember { mutableStateOf(String.format("%02d", initS)) }
+    var minutesText by remember { mutableStateOf(String.format(Locale.US, "%02d", initM)) }
+    var secondsText by remember { mutableStateOf(String.format(Locale.US, "%02d", initS)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -149,7 +150,7 @@ fun ManualTimePickerDialog(
         title = {
             Column {
                 Text(
-                    text = "Input Manual Exato (HH:MM:SS)",
+                    text = "Tempo Manual Exato (HH:MM:SS)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -163,19 +164,19 @@ fun ManualTimePickerDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Digite o tempo exato que consta no save do seu Console/PC:",
+                    text = "Digite o tempo exato que consta no arquivo de salvamento do seu Console ou PC:",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = hoursText,
                         onValueChange = { hoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("Horas") },
+                        label = { Text("Horas", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -184,7 +185,7 @@ fun ManualTimePickerDialog(
                     OutlinedTextField(
                         value = minutesText,
                         onValueChange = { minutesText = it.filter(Char::isDigit).take(2) },
-                        label = { Text("Min (0-59)") },
+                        label = { Text("Min", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -193,7 +194,7 @@ fun ManualTimePickerDialog(
                     OutlinedTextField(
                         value = secondsText,
                         onValueChange = { secondsText = it.filter(Char::isDigit).take(2) },
-                        label = { Text("Seg (0-59)") },
+                        label = { Text("Seg", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -211,7 +212,7 @@ fun ManualTimePickerDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary)
             ) {
-                Text("Salvar Tempo Exato", color = Color(0xFF140526), fontWeight = FontWeight.Bold)
+                Text("Salvar Tempo", color = Color(0xFF140526), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -223,7 +224,7 @@ fun ManualTimePickerDialog(
 }
 
 /**
- * Modal da Roleta do Backlog ("🎲 Backlog Roulette - Pick for me").
+ * Modal da Roleta da Fila (sorteia apenas jogos na fila).
  */
 @Composable
 fun BacklogRouletteDialog(
@@ -244,7 +245,7 @@ fun BacklogRouletteDialog(
                 Text("🎲", fontSize = 24.sp)
                 Column {
                     Text(
-                        text = "Backlog Roulette",
+                        text = "Roleta da Fila",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -284,11 +285,12 @@ fun BacklogRouletteDialog(
                 Text(
                     text = "${winner.platform} • Prioridade ${winner.priority.badge} (${winner.priority.label})",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
                 )
                 val refDuration = TimeFormatUtils.formatHltbReferenceOrTbd(winner.getEffectiveDurationSeconds())
                 Text(
-                    text = "Ref. Duração: $refDuration",
+                    text = "Duração estimada: $refDuration",
                     style = MaterialTheme.typography.labelMedium,
                     color = HallOfFameGold
                 )
@@ -305,7 +307,7 @@ fun BacklogRouletteDialog(
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 OutlinedButton(onClick = onSpinAgain) {
-                    Text("🎲 Girar de Novo", color = NeonPurpleGlow)
+                    Text("🎲 Sortear Outro", color = NeonPurpleGlow)
                 }
                 TextButton(onClick = onDismiss) {
                     Text("Fechar", color = TextMuted)
@@ -316,7 +318,7 @@ fun BacklogRouletteDialog(
 }
 
 /**
- * Modal de Criação/Edição de Jogo com suporte completo a campos HLTB/Data opcionais (TBD Null-safe).
+ * Modal de Criação/Edição de Jogo com suporte completo a campos HLTB/Data opcionais.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -343,15 +345,36 @@ fun GameFormDialog(
     var hltb100HoursText by remember { mutableStateOf(initHltb100Hours) }
     var customHoursText by remember { mutableStateOf(initCustomHours) }
 
-    var releaseDayMonthText by remember { mutableStateOf("") }
-    var releaseYearText by remember { mutableStateOf("") }
+    val initDayMonth = remember(initialGame?.releaseDate) {
+        val ts = initialGame?.releaseDate
+        if (ts == null || ts <= 0L) {
+            ""
+        } else {
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
+            val d = cal.get(Calendar.DAY_OF_MONTH)
+            val m = cal.get(Calendar.MONTH) + 1
+            String.format(Locale.US, "%02d/%02d", d, m)
+        }
+    }
+    val initYear = remember(initialGame?.releaseDate) {
+        val ts = initialGame?.releaseDate
+        if (ts == null || ts <= 0L) {
+            ""
+        } else {
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
+            cal.get(Calendar.YEAR).toString()
+        }
+    }
+
+    var releaseDayMonthText by remember { mutableStateOf(initDayMonth) }
+    var releaseYearText by remember { mutableStateOf(initYear) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DeepSlateSurface,
         title = {
             Text(
-                text = if (initialGame == null) "Adicionar Jogo ao SideQuest" else "Editar Jogo",
+                text = if (initialGame == null) "Novo Jogo" else "Editar Jogo",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -362,27 +385,33 @@ fun GameFormDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Título do Jogo *") },
+                    label = { Text("Título do Jogo *", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
                         value = platform,
                         onValueChange = { platform = it },
-                        label = { Text("Plataforma (PC, PS5...)") },
+                        label = { Text("Plataforma", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("PC, PS5...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = genres,
                         onValueChange = { genres = it },
-                        label = { Text("Gêneros") },
+                        label = { Text("Gêneros", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("RPG, Ação...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -397,7 +426,14 @@ fun GameFormDialog(
                         FilterChip(
                             selected = status == item,
                             onClick = { status = item },
-                            label = { Text(item.displayName, fontSize = 11.sp) },
+                            label = {
+                                Text(
+                                    text = item.displayName,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = NeonPurplePrimary.copy(alpha = 0.25f),
                                 selectedLabelColor = NeonPurpleGlow
@@ -407,42 +443,81 @@ fun GameFormDialog(
                 }
 
                 Text("Prioridade:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     PriorityTier.entries.forEach { tier ->
+                        val isSelected = priority == tier
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) NeonPurpleSecondary.copy(alpha = 0.35f) else DeepSlateCard
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) NeonPurplePrimary else DeepSlateElevated,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .clickable { priority = tier },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Nível ${tier.badge}",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = if (isSelected) NeonPurpleGlow else TextSecondary,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+
+                Text("Estilo de Meta:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CompletionStyle.entries.forEach { style ->
                         FilterChip(
-                            selected = priority == tier,
-                            onClick = { priority = tier },
-                            label = { Text("Tier ${tier.badge}") },
+                            selected = completionStyle == style,
+                            onClick = { completionStyle = style },
+                            label = {
+                                Text(
+                                    text = style.shortLabel,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NeonPurpleSecondary.copy(alpha = 0.3f),
-                                selectedLabelColor = TextPrimary
+                                selectedContainerColor = NeonPurplePrimary.copy(alpha = 0.25f),
+                                selectedLabelColor = NeonPurpleGlow
                             )
                         )
                     }
                 }
 
-                Text("Estilo de Meta:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    CompletionStyle.entries.forEach { style ->
-                        FilterChip(
-                            selected = completionStyle == style,
-                            onClick = { completionStyle = style },
-                            label = { Text(style.shortLabel, fontSize = 11.sp) }
-                        )
-                    }
-                }
-
                 Text(
-                    text = "Referências HLTB em Horas (Deixe vazio para TBD / Inédito):",
+                    text = "Duração Estimada em Horas (Deixe vazio se a definir):",
                     style = MaterialTheme.typography.labelMedium,
                     color = TextSecondary
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
                         value = hltbMainHoursText,
                         onValueChange = { hltbMainHoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("HLTB Main (h)") },
-                        placeholder = { Text("TBD") },
+                        label = { Text("Campanha (h)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("A definir", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -450,46 +525,49 @@ fun GameFormDialog(
                     OutlinedTextField(
                         value = hltb100HoursText,
                         onValueChange = { hltb100HoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("HLTB 100% (h)") },
-                        placeholder = { Text("TBD") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = customHoursText,
-                        onValueChange = { customHoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("Meta Pessoal (h)") },
-                        placeholder = { Text("Opcional") },
+                        label = { Text("100% (h)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("A definir", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
                     )
                 }
+                OutlinedTextField(
+                    value = customHoursText,
+                    onValueChange = { customHoursText = it.filter(Char::isDigit).take(4) },
+                    label = { Text("Meta Pessoal em Horas (Opcional)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    placeholder = { Text("Ex: 40", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                if (initialGame == null) {
-                    Text(
-                        text = "Data de Lançamento (Opcional — importante para Day One):",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary
+                Text(
+                    text = "Data de Lançamento (Opcional):",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = releaseDayMonthText,
+                        onValueChange = { releaseDayMonthText = it.take(5) },
+                        label = { Text("Dia/Mês", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("19/11", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = releaseDayMonthText,
-                            onValueChange = { releaseDayMonthText = it.take(5) },
-                            label = { Text("Dia/Mês (ex: 19/11)") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = releaseYearText,
-                            onValueChange = { releaseYearText = it.filter(Char::isDigit).take(4) },
-                            label = { Text("Ano (ex: 2026)") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    OutlinedTextField(
+                        value = releaseYearText,
+                        onValueChange = { releaseYearText = it.filter(Char::isDigit).take(4) },
+                        label = { Text("Ano", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("2026", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Row(
@@ -498,9 +576,10 @@ fun GameFormDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Jogo Principal do Momento (Main Focus)",
+                        text = "Jogo Principal do Momento",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextPrimary
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f)
                     )
                     Switch(
                         checked = isMainFocus,

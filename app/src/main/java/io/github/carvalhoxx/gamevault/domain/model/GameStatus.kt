@@ -2,10 +2,10 @@ package io.github.carvalhoxx.gamevault.domain.model
 
 enum class GameStatus(val displayName: String) {
     PLAYING("Jogando"),
-    BACKLOG("Backlog"),
-    DAY_ONE("Day One"),
-    WISHLIST("Wishlist"),
+    BACKLOG("Na Fila"),
+    DAY_ONE("Lançamento"),
+    WISHLIST("Lista de Desejos"),
     COMPLETED("Zerado"),
     PAUSED("Pausado"),
-    DROPPED("Dropado")
+    DROPPED("Abandonado")
 }
