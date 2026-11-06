@@ -91,12 +91,14 @@ fun SideQuestNavGraph(
     val rouletteWinner by viewModel.rouletteWinner.collectAsState()
     val nowMillis by viewModel.nowMillis.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
+    val isSyncingLibrary by viewModel.isSyncingLibrary.collectAsState()
+    val syncProgressLabel by viewModel.syncProgressLabel.collectAsState()
 
     LaunchedEffect(statusMessage) {
         val msg = statusMessage
         if (!msg.isNullOrBlank()) {
             snackbarHostState.showSnackbar(msg)
-            viewModel.clearStatusMessage()
+            viewModel.clearStatusMessage(msg)
         }
     }
 
@@ -171,7 +173,9 @@ fun SideQuestNavGraph(
                     onImportCsvUri = { uri ->
                         viewModel.importFriendCsv(context.contentResolver, uri)
                     },
-                    onSyncMissingMetadata = viewModel::syncMissingLibraryMetadata
+                    onSyncMissingMetadata = viewModel::syncMissingLibraryMetadata,
+                    isSyncingLibrary = isSyncingLibrary,
+                    syncProgressLabel = syncProgressLabel
                 )
             }
 

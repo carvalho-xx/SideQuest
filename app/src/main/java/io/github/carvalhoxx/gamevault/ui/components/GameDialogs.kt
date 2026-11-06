@@ -765,24 +765,29 @@ fun GameFormDialog(
                     ) {
                         Text(
                             text = if (isManagingPlatforms) {
-                                "Toque em uma plataforma para excluí-la:"
+                                "Toque na plataforma para excluir:"
                             } else {
                                 "Minhas Plataformas:"
                             },
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isManagingPlatforms) DangerCrimson else TextSecondary
+                            color = if (isManagingPlatforms) DangerCrimson else TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         if (userPlatforms.isNotEmpty()) {
                             Text(
-                                text = if (isManagingPlatforms) "Concluir" else "Gerenciar",
+                                text = if (isManagingPlatforms) "✕ Cancelar" else "Gerenciar",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = if (isManagingPlatforms) NeonPurpleGlow else TextMuted,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold
                                 ),
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .clickable { isManagingPlatforms = !isManagingPlatforms }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
                     }
@@ -805,7 +810,14 @@ fun GameFormDialog(
                                 }
                             )
                         }
-                        if (!isManagingPlatforms) {
+                        if (isManagingPlatforms) {
+                            CompactSelectPill(
+                                text = "← Voltar",
+                                selected = false,
+                                isAction = true,
+                                onClick = { isManagingPlatforms = false }
+                            )
+                        } else {
                             CompactSelectPill(
                                 text = "+ Nova Plataforma",
                                 selected = isAddingPlatform,

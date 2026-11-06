@@ -51,6 +51,12 @@ class GameVaultViewModel(
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
+    private val _isSyncingLibrary = MutableStateFlow(false)
+    val isSyncingLibrary: StateFlow<Boolean> = _isSyncingLibrary.asStateFlow()
+
+    private val _syncProgressLabel = MutableStateFlow<String?>(null)
+    val syncProgressLabel: StateFlow<String?> = _syncProgressLabel.asStateFlow()
+
     private val _rouletteWinner = MutableStateFlow<GameEntity?>(null)
     val rouletteWinner: StateFlow<GameEntity?> = _rouletteWinner.asStateFlow()
 
@@ -98,6 +104,9 @@ class GameVaultViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        viewModelScope.launch {
+            repository.normalizeAllExistingGenres()
+        }
         // Relógio de precisão de 1 segundo para atualizar o cronômetro de sessão ao vivo
         viewModelScope.launch {
             while (isActive) {
@@ -123,8 +132,10 @@ class GameVaultViewModel(
         _libraryFilter.value = _libraryFilter.value.copy(selectedPriority = priority)
     }
 
-    fun clearStatusMessage() {
-        _statusMessage.value = null
+    fun clearStatusMessage(displayedMessage: String? = null) {
+        if (displayedMessage == null || _statusMessage.value == displayedMessage) {
+            _statusMessage.value = null
+        }
     }
 
     fun toggleSessionTimer(game: GameEntity) {
@@ -210,13 +221,22 @@ class GameVaultViewModel(
     }
 
     fun syncMissingLibraryMetadata() {
+        if (_isSyncingLibrary.value) return
         viewModelScope.launch {
-            _statusMessage.value = "Sincronizando capas e durações da biblioteca..."
-            val count = repository.syncMissingMetadataBatch()
-            _statusMessage.value = if (count > 0) {
-                "$count jogos atualizados com capas e durações!"
-            } else {
-                "Biblioteca já está sincronizada."
+            _isSyncingLibrary.value = true
+            _syncProgressLabel.value = "Iniciando sincronização da biblioteca..."
+            try {
+                val count = repository.syncMissingMetadataBatch { done, total ->
+                    _syncProgressLabel.value = "Sincronizando dados e gêneros ($done/$total)..."
+                }
+                _statusMessage.value = if (count > 0) {
+                    "$count jogos sincronizados com capas, durações e gêneros!"
+                } else {
+                    "Biblioteca verificada e sincronizada."
+                }
+            } finally {
+                _isSyncingLibrary.value = false
+                _syncProgressLabel.value = null
             }
         }
     }

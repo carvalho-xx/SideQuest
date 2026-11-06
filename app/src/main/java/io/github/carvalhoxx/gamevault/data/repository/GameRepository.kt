@@ -10,6 +10,9 @@ import io.github.carvalhoxx.gamevault.data.remote.GameMetadataService
 import io.github.carvalhoxx.gamevault.data.remote.RemoteGameMetadata
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -42,6 +45,7 @@ class GameRepository(
 
     suspend fun saveGame(game: GameEntity): Long {
         val normalized = game.copy(
+            genres = GameMetadataService.normalizeGenresPtBr(game.genres),
             isHallOfFame = (game.personalRating != null && game.personalRating >= 11.0f) || game.isHallOfFame
         )
         val savedId = if (normalized.id == 0L) {
@@ -171,7 +175,7 @@ class GameRepository(
     }
 
     /**
-     * Fase 3: Atualiza capa, data de lançamento, gêneros e tempos HLTB de um jogo existente
+     * Fase 3: Atualiza capa, data de lançamento, gêneros padronizados e tempos HLTB de um jogo existente
      * preservando o tempo jogado, nota e memória afetiva do usuário.
      */
     suspend fun refreshGameMetadata(gameId: Long): Boolean {
@@ -181,12 +185,16 @@ class GameRepository(
             existingExternalId = current.externalApiId
         ) ?: return false
 
+        val resolvedGenres = GameMetadataService.normalizeGenresPtBr(
+            remote.genres.ifBlank { current.genres }
+        )
+
         val updated = current.copy(
             externalApiId = remote.externalApiId ?: current.externalApiId,
             coverUrl = remote.coverUrl ?: current.coverUrl,
             backdropUrl = remote.backdropUrl ?: current.backdropUrl,
             releaseDate = remote.releaseDateMillis ?: current.releaseDate,
-            genres = current.genres.ifBlank { remote.genres },
+            genres = resolvedGenres,
             hltbMainSeconds = remote.hltbMainSeconds ?: current.hltbMainSeconds,
             hltbExtraSeconds = remote.hltbExtraSeconds ?: current.hltbExtraSeconds,
             hltbCompletionistSeconds = remote.hltbCompletionistSeconds ?: current.hltbCompletionistSeconds
@@ -196,41 +204,97 @@ class GameRepository(
     }
 
     /**
-     * Fase 3: Sincroniza em lote jogos da biblioteca que estão sem capa ou sem referência HLTB.
+     * Padroniza localmente os gêneros de todos os jogos já cadastrados no banco
+     * (evita diferenças como "sobrevivência" vs "Sobrevivência" ou caracteres corrompidos de CSV).
      */
-    suspend fun syncMissingMetadataBatch(): Int = withContext(Dispatchers.IO) {
+    suspend fun normalizeAllExistingGenres(): Int = withContext(Dispatchers.IO) {
         val all = gameDao.getAllGamesSnapshot()
-        val targets = all.filter { it.coverUrl.isNullOrBlank() || it.hltbMainSeconds == null }
-        var updatedCount = 0
-
-        for (game in targets) {
-            val remote = metadataService.fetchBestMatchForTitle(
-                title = game.title,
-                existingExternalId = game.externalApiId
-            ) ?: continue
-
-            val newCover = game.coverUrl ?: remote.coverUrl
-            val newMain = game.hltbMainSeconds ?: remote.hltbMainSeconds
-            val newExtra = game.hltbExtraSeconds ?: remote.hltbExtraSeconds
-            val newComp = game.hltbCompletionistSeconds ?: remote.hltbCompletionistSeconds
-            val newGenres = game.genres.ifBlank { remote.genres }
-            val newRelease = game.releaseDate ?: remote.releaseDateMillis
-
-            if (newCover != game.coverUrl || newMain != game.hltbMainSeconds || newGenres != game.genres) {
-                gameDao.updateGame(
-                    game.copy(
-                        externalApiId = remote.externalApiId,
-                        coverUrl = newCover,
-                        backdropUrl = game.backdropUrl ?: remote.backdropUrl,
-                        releaseDate = newRelease,
-                        genres = newGenres,
-                        hltbMainSeconds = newMain,
-                        hltbExtraSeconds = newExtra,
-                        hltbCompletionistSeconds = newComp
-                    )
-                )
-                updatedCount++
+        var normalizedCount = 0
+        for (game in all) {
+            val cleanGenres = GameMetadataService.normalizeGenresPtBr(game.genres)
+            val cleanTitle = GameMetadataService.unescapeJson(game.title).trim()
+            if (cleanGenres != game.genres || cleanTitle != game.title) {
+                gameDao.updateGame(game.copy(title = cleanTitle, genres = cleanGenres))
+                normalizedCount++
             }
+        }
+        normalizedCount
+    }
+
+    /**
+     * Fase 3: Sincroniza em lote todos os jogos da biblioteca (priorizando jogos sem capa/duração/gênero
+     * e atualizando também os demais com gêneros padronizados, capas e tempos online).
+     */
+    suspend fun syncMissingMetadataBatch(
+        onProgress: (completed: Int, total: Int) -> Unit = { _, _ -> }
+    ): Int = withContext(Dispatchers.IO) {
+        val localUpdated = normalizeAllExistingGenres()
+        val all = gameDao.getAllGamesSnapshot()
+        if (all.isEmpty()) return@withContext 0
+
+        val prioritized = all.sortedBy { game ->
+            if (game.coverUrl.isNullOrBlank() || game.hltbMainSeconds == null || game.genres.isBlank()) 0 else 1
+        }
+
+        var updatedCount = localUpdated
+        var processed = 0
+        val total = prioritized.size
+        onProgress(0, total)
+
+        for (chunk in prioritized.chunked(5)) {
+            val results = coroutineScope {
+                chunk.map { game ->
+                    async {
+                        val remote = runCatching {
+                            metadataService.fetchBestMatchForTitle(
+                                title = game.title,
+                                existingExternalId = game.externalApiId
+                            )
+                        }.getOrNull()
+                        game to remote
+                    }
+                }.awaitAll()
+            }
+
+            for ((game, remote) in results) {
+                processed++
+                if (remote == null) continue
+
+                val newCover = remote.coverUrl ?: game.coverUrl
+                val newBackdrop = remote.backdropUrl ?: game.backdropUrl ?: newCover
+                val newMain = remote.hltbMainSeconds ?: game.hltbMainSeconds
+                val newExtra = remote.hltbExtraSeconds ?: game.hltbExtraSeconds
+                val newComp = remote.hltbCompletionistSeconds ?: game.hltbCompletionistSeconds
+                val newGenres = GameMetadataService.normalizeGenresPtBr(
+                    remote.genres.ifBlank { game.genres }
+                )
+                val newRelease = remote.releaseDateMillis ?: game.releaseDate
+                val newExternalId = remote.externalApiId ?: game.externalApiId
+
+                if (newCover != game.coverUrl ||
+                    newMain != game.hltbMainSeconds ||
+                    newExtra != game.hltbExtraSeconds ||
+                    newComp != game.hltbCompletionistSeconds ||
+                    newGenres != game.genres ||
+                    newRelease != game.releaseDate ||
+                    newExternalId != game.externalApiId
+                ) {
+                    gameDao.updateGame(
+                        game.copy(
+                            externalApiId = newExternalId,
+                            coverUrl = newCover,
+                            backdropUrl = newBackdrop,
+                            releaseDate = newRelease,
+                            genres = newGenres,
+                            hltbMainSeconds = newMain,
+                            hltbExtraSeconds = newExtra,
+                            hltbCompletionistSeconds = newComp
+                        )
+                    )
+                    updatedCount++
+                }
+            }
+            onProgress(processed, total)
         }
         updatedCount
     }

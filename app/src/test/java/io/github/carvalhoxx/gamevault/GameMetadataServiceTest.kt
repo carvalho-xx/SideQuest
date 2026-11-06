@@ -189,4 +189,32 @@ class GameMetadataServiceTest {
         assertEquals(46L * 3600L, bestMatch.hltbMainSeconds)
         GameMetadataService.clearCachedHltbSession()
     }
+
+    @Test
+    fun `normalizeGenresPtBr repairs corrupted encoding and standardizes casing and synonyms`() {
+        assertEquals(
+            "Ação, Furtividade",
+            GameMetadataService.normalizeGenresPtBr("A\uFFFD\uFFFDo/Stealth")
+        )
+        assertEquals(
+            "Sobrevivência",
+            GameMetadataService.normalizeGenresPtBr("sobrevivência")
+        )
+        assertEquals(
+            "Sobrevivência",
+            GameMetadataService.normalizeGenresPtBr("Sobrevivencia")
+        )
+        assertEquals(
+            "Terror, Quebra-Cabeça",
+            GameMetadataService.normalizeGenresPtBr("Terror/puzzle")
+        )
+        assertEquals(
+            "Ação, Aventura, Beat 'em up",
+            GameMetadataService.normalizeGenresPtBr("Third-Person, Action, Adventure, Beat em Up")
+        )
+        assertEquals(
+            "Beat 'em up",
+            GameMetadataService.normalizeGenresPtBr("Beat \\u0027em Up")
+        )
+    }
 }

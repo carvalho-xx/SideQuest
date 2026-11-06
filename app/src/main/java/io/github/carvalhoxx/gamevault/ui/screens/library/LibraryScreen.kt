@@ -84,6 +84,8 @@ fun LibraryScreen(
     onSaveGame: (GameEntity) -> Unit,
     onImportCsvUri: (Uri) -> Unit,
     onSyncMissingMetadata: () -> Unit = {},
+    isSyncingLibrary: Boolean = false,
+    syncProgressLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     var showAdvancedFilters by remember { mutableStateOf(false) }
@@ -211,16 +213,21 @@ fun LibraryScreen(
 
             IconButton(
                 onClick = onSyncMissingMetadata,
+                enabled = !isSyncingLibrary,
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(DeepSlateCard)
-                    .border(1.dp, DeepSlateElevated, CircleShape)
+                    .background(if (isSyncingLibrary) NeonPurplePrimary.copy(alpha = 0.25f) else DeepSlateCard)
+                    .border(
+                        1.dp,
+                        if (isSyncingLibrary) NeonPurplePrimary else DeepSlateElevated,
+                        CircleShape
+                    )
             ) {
                 Icon(
                     imageVector = AppIcons.Sync,
-                    contentDescription = "Sincronizar capas e durações",
-                    tint = TextPrimary,
+                    contentDescription = "Sincronizar capas, durações e gêneros",
+                    tint = if (isSyncingLibrary) NeonPurpleGlow else TextPrimary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -240,6 +247,25 @@ fun LibraryScreen(
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (!syncProgressLabel.isNullOrBlank()) {
+            Surface(
+                color = NeonPurplePrimary.copy(alpha = 0.18f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, NeonPurplePrimary.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            ) {
+                Text(
+                    text = "🔄 $syncProgressLabel",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = NeonPurpleGlow,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 )
             }
         }

@@ -1,13 +1,13 @@
 package io.github.carvalhoxx.gamevault.data.importer
 
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
+import io.github.carvalhoxx.gamevault.data.remote.GameMetadataService
 import io.github.carvalhoxx.gamevault.domain.model.CompletionStyle
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
-import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 data class CsvImportSummary(
@@ -27,8 +27,14 @@ class CsvGameImporter {
         inputStream: InputStream,
         existingNormalizedTitles: Set<String> = emptySet()
     ): CsvImportSummary {
-        val rawLines = BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8))
-            .use { reader -> reader.readLines() }
+        val rawBytes = inputStream.use { it.readBytes() }
+        val utf8Text = String(rawBytes, StandardCharsets.UTF_8)
+        val decodedText = if (utf8Text.contains('\uFFFD')) {
+            String(rawBytes, Charset.forName("windows-1252"))
+        } else {
+            utf8Text
+        }
+        val rawLines = decodedText.lines()
 
         val parsedRows = rawLines.map { parseCsvLine(it) }
 
@@ -63,8 +69,7 @@ class CsvGameImporter {
             val releaseDateMillis = TimeFormatUtils.parseDayMonthAndYearToMillis(releaseDayMonth, releaseYear)
 
             val genres = cols.getOrNull(4)?.trim()
-                ?.replace("/", ", ")
-                ?.takeIf { it.isNotBlank() }
+                ?.let { GameMetadataService.normalizeGenresPtBr(it) }
                 .orEmpty()
 
             val timePlayedSeconds = TimeFormatUtils.parseDurationToSeconds(cols.getOrNull(5))

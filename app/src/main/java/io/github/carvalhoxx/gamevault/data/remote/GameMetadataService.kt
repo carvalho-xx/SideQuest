@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.Normalizer
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -94,18 +95,23 @@ class GameMetadataService(
         title: String,
         existingExternalId: String? = null
     ): RemoteGameMetadata? = withContext(Dispatchers.IO) {
-        val cleanTitle = title.trim()
+        val cleanTitle = cleanTitleForOnlineSearch(title)
         if (cleanTitle.isEmpty()) return@withContext null
 
         val results = searchGames(cleanTitle)
         val exact = results.firstOrNull {
             (!existingExternalId.isNullOrBlank() && it.externalApiId == existingExternalId) ||
-                normalizeTitle(it.title) == normalizeTitle(cleanTitle)
+                normalizeTitle(it.title) == normalizeTitle(cleanTitle) ||
+                normalizeTitle(it.title) == normalizeTitle(title)
         } ?: results.firstOrNull()
 
-        val hltbHit = results.firstOrNull { it.externalApiId?.startsWith("hltb:") == true }
+        val hltbHit = results.firstOrNull {
+            it.externalApiId?.startsWith("hltb:") == true &&
+                normalizeTitle(it.title) == normalizeTitle(cleanTitle)
+        } ?: results.firstOrNull { it.externalApiId?.startsWith("hltb:") == true }
             ?: runCatching { searchHowLongToBeat(cleanTitle).firstOrNull() }.getOrNull()
             ?: HltbReferenceCatalog.findExactOrFuzzy(cleanTitle)
+            ?: HltbReferenceCatalog.findExactOrFuzzy(title)
 
         val combined = when {
             exact != null && hltbHit != null && exact.externalApiId != hltbHit.externalApiId ->
@@ -199,11 +205,23 @@ class GameMetadataService(
      * Utiliza cache de token em memória para resposta rápida enquanto o usuário digita.
      */
     internal fun searchHowLongToBeat(query: String): List<RemoteGameMetadata> {
-        val terms = query.trim()
+        val cleaned = cleanTitleForOnlineSearch(query)
+        val terms = cleaned
             .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
+            .filter { it.isNotBlank() && it != "+" && it != "-" }
         if (terms.isEmpty()) return emptyList()
 
+        val primary = searchHowLongToBeatTerms(terms)
+        if (primary.isNotEmpty()) return primary
+
+        val lastLower = terms.last().lowercase(Locale.ROOT)
+        if (terms.size >= 2 && (lastLower == "1" || lastLower == "remake" || lastLower == "remastered")) {
+            return searchHowLongToBeatTerms(terms.dropLast(1))
+        }
+        return emptyList()
+    }
+
+    private fun searchHowLongToBeatTerms(terms: List<String>): List<RemoteGameMetadata> {
         val payload = buildHltbSearchPayload(terms)
 
         // 1. Tenta com o token em cache primeiro para evitar 2 requisições por tecla digitada
@@ -219,8 +237,10 @@ class GameMetadataService(
             clearCachedHltbSession()
         }
 
-        // 2. Obtém um novo token de sessão no endpoint de inicialização do HLTB
-        val freshSession = fetchHltbSession() ?: return emptyList()
+        // 2. Obtém um novo token de sessão no endpoint de inicialização do HLTB (sincronizado para chamadas paralelas)
+        val freshSession = synchronized(sessionLock) {
+            getCachedHltbSession() ?: fetchHltbSession()
+        } ?: return emptyList()
         val responseJson = executeHltbPost(freshSession, payload) ?: return emptyList()
         return parseHowLongToBeatResponseJson(responseJson)
     }
@@ -574,6 +594,17 @@ class GameMetadataService(
 
         @Volatile
         private var cachedHltbSession: HltbSession? = null
+        private val sessionLock = Any()
+
+        internal fun cleanTitleForOnlineSearch(raw: String): String {
+            return raw
+                .replace(Regex("\\[[^]]*]"), " ")
+                .replace(Regex("\\([^)]*(?:dlc|remaster|edition|goty|19\\d\\d|20\\d\\d)[^)]*\\)", RegexOption.IGNORE_CASE), " ")
+                .replace(Regex("\\+\\s*dlcs?\\b", RegexOption.IGNORE_CASE), " ")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .ifEmpty { raw.trim() }
+        }
 
         internal fun getCachedHltbSession(): HltbSession? {
             val session = cachedHltbSession ?: return null
@@ -606,54 +637,103 @@ class GameMetadataService(
             return na == nb || (na.length >= 4 && nb.length >= 4 && (na.startsWith(nb) || nb.startsWith(na)))
         }
 
+        internal fun normalizeGenresPtBr(rawGenres: String): String {
+            if (rawGenres.isBlank()) return ""
+            val tokens = rawGenres.split(Regex("[,;/|]"))
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            return formatGenresListPtBr(tokens)
+        }
+
         internal fun formatGenresListPtBr(rawGenres: List<String>): String {
+            val expanded = rawGenres
+                .flatMap { it.split(Regex("[,;/|]")) }
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
             val cameraPerspectives = setOf(
-                "first-person", "third-person", "top-down", "isometric", "side-scrolling", "scrolling"
+                "first-person", "third-person", "top-down", "isometric", "side-scrolling", "scrolling",
+                "primeira pessoa", "terceira pessoa", "visao superior", "visão superior", "isometrico", "isométrico"
             )
-            val nonPerspective = rawGenres.filterNot { it.trim().lowercase(Locale.ROOT) in cameraPerspectives }
-            val chosen = (if (nonPerspective.isNotEmpty()) nonPerspective else rawGenres)
+            val nonPerspective = expanded.filterNot { it.lowercase(Locale.ROOT) in cameraPerspectives }
+            val chosen = (if (nonPerspective.isNotEmpty()) nonPerspective else expanded)
                 .map(::translateGenreToPtBr)
                 .filter { it.isNotBlank() }
-                .distinct()
+                .distinctBy { it.lowercase(Locale.ROOT) }
                 .take(3)
             return chosen.joinToString(", ")
         }
 
         internal fun translateGenreToPtBr(genre: String): String {
-            return when (genre.trim().lowercase(Locale.ROOT)) {
-                "action" -> "Ação"
-                "adventure", "action-adventure" -> "Aventura"
-                "rpg", "role-playing", "role-playing (rpg)", "role-playing-games-rpg", "action rpg", "jrpg" -> "RPG"
-                "strategy", "turn-based strategy (tbs)", "real-time strategy (rts)" -> "Estratégia"
-                "turn-based" -> "Combate por Turnos"
-                "open world" -> "Mundo Aberto"
-                "shooter", "first-person shooter", "third-person shooter" -> "Tiro"
-                "puzzle" -> "Quebra-Cabeça"
-                "racing" -> "Corrida"
-                "sports" -> "Esportes"
-                "fighting" -> "Luta"
-                "platformer", "platform" -> "Plataforma"
-                "simulation", "simulator" -> "Simulação"
+            val trimmed = unescapeJson(genre).trim()
+            if (trimmed.isEmpty()) return ""
+
+            val lower = trimmed.lowercase(Locale.ROOT)
+                .replace(Regex("\\s+"), " ")
+            val asciiKey = Normalizer.normalize(lower, Normalizer.Form.NFD)
+                .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+                .replace(Regex("[\\uFFFD?]+"), "")
+                .trim()
+
+            return when (asciiKey) {
+                "action", "acao", "ao", "aco" -> "Ação"
+                "adventure", "action-adventure", "action adventure", "aventura" -> "Aventura"
+                "rpg", "role-playing", "role-playing (rpg)", "role-playing-games-rpg", "action rpg", "jrpg", "arpg" -> "RPG"
+                "strategy", "turn-based strategy (tbs)", "real-time strategy (rts)", "estrategia", "estratgia" -> "Estratégia"
+                "turn-based", "turn-based combat", "combate por turnos", "turnos" -> "Combate por Turnos"
+                "open world", "open-world", "mundo aberto" -> "Mundo Aberto"
+                "shooter", "first-person shooter", "third-person shooter", "fps", "tps", "tiro", "run and gun" -> "Tiro"
+                "puzzle", "puzzles", "quebra-cabeca", "quebra cabeca", "quebra-cabea", "quebra cabea" -> "Quebra-Cabeça"
+                "racing", "driving", "corrida" -> "Corrida"
+                "sports", "sport", "esportes", "esporte" -> "Esportes"
+                "fighting", "luta", "artes marciais", "martial arts" -> "Luta"
+                "platformer", "platform", "plataforma" -> "Plataforma"
+                "simulation", "simulator", "simulacao", "simulao" -> "Simulação"
                 "indie" -> "Indie"
                 "arcade" -> "Arcade"
-                "hack and slash", "hack and slash/beat 'em up" -> "Hack and Slash"
-                "beat 'em up" -> "Beat 'em up"
-                "tactical" -> "Tático"
+                "hack and slash", "hack & slash", "hack 'n' slash", "hack and slash/beat 'em up" -> "Hack and Slash"
+                "beat 'em up", "beat em up", "brawler" -> "Beat 'em up"
+                "tactical", "tatico", "ttico" -> "Tático"
                 "survival horror" -> "Survival Horror"
-                "horror" -> "Terror"
-                "survival" -> "Sobrevivência"
-                "stealth" -> "Furtividade"
+                "psychological horror", "terror psicologico", "terror psicolgico" -> "Terror Psicológico"
+                "horror", "terror" -> "Terror"
+                "survival", "sobrevivencia", "sobrevivncia" -> "Sobrevivência"
+                "stealth", "furtividade" -> "Furtividade"
                 "sandbox" -> "Sandbox"
-                "roguelike", "roguelite" -> "Roguelike"
+                "roguelike", "roguelite", "rogue like", "rogue-like", "rogue-lite" -> "Roguelike"
+                "soulslike", "souls like", "souls-like" -> "Soulslike"
                 "metroidvania" -> "Metroidvania"
                 "visual novel" -> "Visual Novel"
-                "point-and-click" -> "Point-and-Click"
-                "first-person" -> "Primeira Pessoa"
-                "third-person" -> "Terceira Pessoa"
-                "top-down" -> "Visão Superior"
-                "isometric" -> "Isométrico"
-                else -> genre.trim()
+                "point-and-click", "point and click" -> "Point-and-Click"
+                "coop", "co-op", "cooperativo", "co-op/multiplayer" -> "Cooperativo"
+                "mystery", "misterio", "mistrio", "suspense" -> "Mistério"
+                "superhero", "super-heroi", "super heroi", "super-heri" -> "Super-Herói"
+                "sci-fi", "science fiction", "ficcao cientifica", "fico cientfica" -> "Ficção Científica"
+                "choices", "escolha", "escolhas", "interactive drama" -> "Escolhas"
+                "card game", "cards", "cartas", "deckbuilder" -> "Cartas"
+                "music", "rhythm", "ritmo", "musica", "msica" -> "Ritmo"
+                "culinaria", "culinria", "cooking" -> "Culinária"
+                "first-person", "primeira pessoa" -> "Primeira Pessoa"
+                "third-person", "terceira pessoa" -> "Terceira Pessoa"
+                "top-down", "visao superior" -> "Visão Superior"
+                "isometric", "isometrico", "isomtrico" -> "Isométrico"
+                else -> formatStandardTitleCase(trimmed.replace("\uFFFD", ""))
             }
+        }
+
+        private fun formatStandardTitleCase(raw: String): String {
+            val clean = raw.trim().replace(Regex("\\s+"), " ")
+            if (clean.isEmpty()) return ""
+            val lowercaseConnectors = setOf("de", "da", "do", "das", "dos", "e", "por", "em", "and", "of", "the", "'em")
+            return clean.split(" ").mapIndexed { index, word ->
+                val lowerWord = word.lowercase(Locale.ROOT)
+                if (index > 0 && lowerWord in lowercaseConnectors) {
+                    lowerWord
+                } else {
+                    lowerWord.replaceFirstChar { ch ->
+                        if (ch.isLowerCase()) ch.titlecase(Locale.ROOT) else ch.toString()
+                    }
+                }
+            }.joinToString(" ")
         }
 
         internal fun shortenPlatformsList(raw: String): String {
@@ -888,10 +968,14 @@ class GameMetadataService(
             return result
         }
 
-        private fun unescapeJson(raw: String): String {
-            return raw
+        internal fun unescapeJson(raw: String): String {
+            val unicodeUnescaped = Regex("\\\\u([0-9a-fA-F]{4})").replace(raw) { match ->
+                match.groupValues[1].toInt(16).toChar().toString()
+            }
+            return unicodeUnescaped
                 .replace("\\/", "/")
                 .replace("\\\"", "\"")
+                .replace("\\'", "'")
                 .replace("\\n", " ")
                 .replace("\\t", " ")
                 .replace("\\\\", "\\")
