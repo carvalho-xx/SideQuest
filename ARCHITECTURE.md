@@ -18,6 +18,10 @@ Aplicativo Android desenvolvido para substituir planilhas complexas de controle 
 * **Rede / APIs:** Retrofit2 + OkHttp3 + Kotlinx Serialization.
 * **Carregamento de Imagens:** Coil (`AsyncImage`).
 * **Tarefas em Background & Timer:** Android `WorkManager` (promoções/alertas) + `ForegroundService` (ou persistência de timestamp inicial no `DataStore`) para o Cronômetro de Sessão de Jogo ativo.
+* **Idioma Padrão e Diretrizes Visuais (Obrigatório):**
+  * **100% Português Brasileiro (`pt-BR`):** Toda a interface do usuário (títulos, abas, botões, rótulos de status, níveis de prioridade `Nível S/A/B/C`, placeholders e mensagens de sistema) deve estar integralmente em português brasileiro, sem misturar termos em inglês (ex: usar *"Jogando Agora"*, *"Na Fila"*, *"Lançamento"*, *"Hall da Fama"*, *"Jogo da Vida"*, *"A definir"* em vez de *TBD*).
+  * **Padrão de Ícones Vetoriais (`AppIcons.kt`):** Proibido misturar caracteres de texto/emojis em botões de ação (`←`, `✎`, `🗑`, `🔍`, `⚙`). Todos os botões de ação e abas de navegação devem usar ícones vetoriais Material (`ImageVector` em `AppIcons`) com tamanho proporcional (`22.dp` dentro de botões circulares `42.dp`–`48.dp`), cor padronizada (`TextPrimary`) e borda uniforme (`DeepSlateElevated`).
+  * **Prevenção de Quebra de Layout:** Campos `OutlinedTextField` lado a lado devem ter rótulos (`label`) curtos em linha única (`maxLines = 1`) e exemplos no `placeholder`. Seletores de prioridade (`Nível S/A/B/C`) e precisão decimal (`.0`, `.25`, `.5`, `.75`) devem usar colunas de peso igual (`Modifier.weight(1f)`) com `softWrap = false`.
 
 ---
 
@@ -27,9 +31,9 @@ Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do
 
 | Nome do Arquivo na pasta `design_refs/` | Tela Correspondente no App (Jetpack Compose) | Descrição dos Componentes Visuais |
 | :--- | :--- | :--- |
-| **`01_dashboard_home.png`** | `DashboardScreen.kt` | Card Hero "Currently Playing" com Cronômetro (`HH:MM:SS`), comparador flexível com HLTB (sem barra que quebra se passar de 100%), carrossel *Day One Radar*, galeria dourada *Hall of Fame (11/10)* e card de *Personal GOTY*. |
-| **`02_library_backlog.png`** | `LibraryScreen.kt` | Lista e grade da Biblioteca com abas de filtro (*Playing, Backlog, Completed, Dropped*), filtros por plataforma/prioridade e botão da *Roleta do Backlog*. |
-| **`03_game_details_rating11.png`** | `GameDetailScreen.kt` | Header com arte do jogo, pílulas de referência HLTB, controle de tempo exato (`HH:MM:SS`), Seletor de Nota de `0` a `10` + Botão Dourado **`11/10 Life-Changing`**, card de *Core Memory* (Memória Afetiva) e botão *Personal GOTY*. |
+| **`01_dashboard_home.png`** | `DashboardScreen.kt` | Card Hero "Jogando Agora" com Cronômetro (`HH:MM:SS`), comparador flexível com HLTB (sem barra que quebra se passar de 100%), carrossel *Radar de Lançamentos*, galeria dourada *Hall da Fama (11/10)* (exibindo citação apenas se houver `coreMemoryNote` preenchida, sem texto padrão) e card de *Jogo do Ano Pessoal*. |
+| **`02_library_backlog.png`** | `LibraryScreen.kt` | Lista da Biblioteca com busca, botão `+` de adicionar jogo no topo ao lado do botão de filtros, painel expansível de filtros (com opção *Limpar filtros*), abas de status em português (*Todos, Jogando, Na Fila, Lançamento, Zerados, Abandonados, Pausados*) e botão da *Roleta da Fila*. |
+| **`03_game_details_rating11.png`** | `GameDetailScreen.kt` | Cabeçalho com ícones vetoriais padronizados (Voltar, Editar, Excluir), pílulas de referência HLTB, controle de tempo exato (`HH:MM:SS`), Seletor de Nota de `0` a `10` em grade de 2 linhas + linha dedicada de precisão decimal + Botão Dourado **`11/10 • Jogo da Vida`**, menu colapsável de *Memória Afetiva* (que expande ao toque revelando texto, chave *Jogo do Ano Pessoal* e botão *Salvar Memória*) e botão *Marcar como Zerado* (visível apenas enquanto o jogo não estiver `COMPLETED`). |
 | **`04_day_one_planner.png`** | `PlannerScreen.kt` | Configurador de ritmo (`h/dia`), linha do tempo comparando o jogo atual com lançamentos *Day One*, estado de **"Agenda Dedicada / HLTB Pendente (TBD)"** (para jogos não lançados como GTA VI) e sugestões de *Gap Filler*. |
 | **`05_wishlist_and_goty_tiebreaker.png`**| `WishlistDealsScreen.kt` & `GotyTiebreakerDialog.kt` | Lista de desejos com preço-alvo, badge de desconto verde (`-60%`) e modal de **Desempate de GOTY Pessoal** colocando jogos empatados lado a lado. |
 
@@ -100,8 +104,13 @@ Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do
   * **Efeito Visual do `DURATION_TBD_LOCK` no Planner:** A partir do dia 19 (lançamento do GTA VI), o calendário mostra um bloco especial: *"🔒 Agenda Dedicada: GTA VI (Sem previsão de término — Aguardando dados de duração)"*. Se o usuário quiser planejar jogos *depois* do GTA VI, um botão rápido *"Definir estimativa provisória (ex: 50h)"* fica disponível no próprio card.
 
 ### 5.3. Sistema de Nota 0 a 11 ("Jogo da Vida" / Hall da Fama) e Desempate de GOTY
-* Notas vão de `0.0` a `10.0` + nível especial **`11.0` (Hall of Fame / Jogo da Vida)** com campo obrigatório/destacado de **Memória Afetiva (`coreMemoryNote`)**.
+* Notas vão de `0.0` a `10.0` (com seletor em grade de 2 linhas `0..5` e `6..10` e ajuste fino decimal `.0`, `.25`, `.5`, `.75`) + nível especial **`11.0` (Hall da Fama / Jogo da Vida)**.
+* **Memória Afetiva (`coreMemoryNote`) Opcional e Colapsável:** Na tela de detalhes do jogo, a seção de Memória Afetiva funciona como um menu colapsável (fechado por padrão, expandindo ao toque). Se o usuário avaliar um jogo com nota `11.0` ou marcá-lo como Jogo do Ano Pessoal **sem** preencher a memória afetiva, o Dashboard **não deve exibir nenhuma mensagem padrão inventada** — mostra apenas os dados reais do jogo.
 * **Desempate de GOTY:** Na retrospectiva do ano, se 2 ou mais jogos empatarem com a maior nota (ex: dois jogos nota 11 ou dois jogos nota 10 no mesmo ano), o app habilita o card **"Confronto GOTY [Ano]"** para o usuário escolher manualmente qual leva o troféu.
+
+### 5.4. Roleta da Fila e Preservação de Aba na Navegação
+* **Roleta da Fila (`spinBacklogRoulette`):** Sorteia exclusivamente jogos com status `GameStatus.BACKLOG` (ponderados por `PriorityTier`: Nível S = peso 4, A = 3, B = 2, C = 1). Caso não exista nenhum jogo na fila, a roleta **nunca** deve sortear jogos já zerados (`COMPLETED`) ou de outros status, exibindo um aviso ao usuário.
+* **Destaque da Barra Inferior (`SideQuestNavGraph`):** Ao abrir os detalhes de um jogo (`game_details/{gameId}`), a barra de navegação inferior deve manter destacada a aba de origem (`Início` ou `Biblioteca`), e tocar na aba ativa retorna imediatamente da tela de detalhes para a listagem.
 
 ---
 
