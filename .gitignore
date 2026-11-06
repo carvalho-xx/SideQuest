@@ -35,3 +35,4 @@ google-services.json
 *.hprof
 
 design_refs/
+csv_ref/
