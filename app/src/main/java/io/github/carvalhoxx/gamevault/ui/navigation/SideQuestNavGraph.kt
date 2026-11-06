@@ -100,6 +100,26 @@ fun SideQuestNavGraph(
         }
     }
 
+    fun navigateToTab(tab: BottomNavTab) {
+        if (tab == BottomNavTab.DASHBOARD) {
+            val popped = navController.popBackStack(BottomNavTab.DASHBOARD.route, inclusive = false)
+            if (!popped && navController.currentDestination?.route != BottomNavTab.DASHBOARD.route) {
+                navController.navigate(BottomNavTab.DASHBOARD.route) {
+                    launchSingleTop = true
+                }
+            }
+            return
+        }
+        if (navController.currentDestination?.route != tab.route) {
+            navController.navigate(tab.route) {
+                popUpTo(BottomNavTab.DASHBOARD.route) {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = DeepSlateBackground,
@@ -107,20 +127,7 @@ fun SideQuestNavGraph(
         bottomBar = {
             SideQuestBottomBar(
                 currentRoute = highlightedTabRoute,
-                onSelectTab = { tab ->
-                    if (currentRoute.startsWith("game_details")) {
-                        navController.popBackStack()
-                    }
-                    if (highlightedTabRoute != tab.route) {
-                        navController.navigate(tab.route) {
-                            popUpTo(BottomNavTab.DASHBOARD.route) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                }
+                onSelectTab = ::navigateToTab
             )
         }
     ) { innerPadding ->
@@ -132,16 +139,8 @@ fun SideQuestNavGraph(
             composable(BottomNavTab.DASHBOARD.route) {
                 DashboardScreen(
                     uiState = dashboardState,
-                    onNavigateToLibrary = {
-                        navController.navigate(BottomNavTab.LIBRARY.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    onNavigateToPlanner = {
-                        navController.navigate(BottomNavTab.PLANNER.route) {
-                            launchSingleTop = true
-                        }
-                    },
+                    onNavigateToLibrary = { navigateToTab(BottomNavTab.LIBRARY) },
+                    onNavigateToPlanner = { navigateToTab(BottomNavTab.PLANNER) },
                     onOpenGameDetails = { gameId ->
                         navController.navigate("game_details/$gameId")
                     },
@@ -171,7 +170,8 @@ fun SideQuestNavGraph(
                     onSaveGame = viewModel::saveGame,
                     onImportCsvUri = { uri ->
                         viewModel.importFriendCsv(context.contentResolver, uri)
-                    }
+                    },
+                    onSyncMissingMetadata = viewModel::syncMissingLibraryMetadata
                 )
             }
 
@@ -194,7 +194,8 @@ fun SideQuestNavGraph(
                         viewModel.deleteGame(id) {
                             navController.popBackStack()
                         }
-                    }
+                    },
+                    onRefreshOnlineMetadata = viewModel::refreshGameMetadata
                 )
             }
 

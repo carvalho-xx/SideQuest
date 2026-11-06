@@ -6,6 +6,8 @@ import io.github.carvalhoxx.gamevault.data.importer.CsvGameImporter
 import io.github.carvalhoxx.gamevault.data.importer.CsvImportSummary
 import io.github.carvalhoxx.gamevault.data.local.dao.GameDao
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
+import io.github.carvalhoxx.gamevault.data.remote.GameMetadataService
+import io.github.carvalhoxx.gamevault.data.remote.RemoteGameMetadata
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +16,8 @@ import java.io.InputStream
 
 class GameRepository(
     private val gameDao: GameDao,
-    private val csvGameImporter: CsvGameImporter = CsvGameImporter()
+    private val csvGameImporter: CsvGameImporter = CsvGameImporter(),
+    private val metadataService: GameMetadataService = GameMetadataService()
 ) {
     fun observeAllGames(): Flow<List<GameEntity>> = gameDao.observeAllGames()
 
@@ -149,4 +152,86 @@ class GameRepository(
             }
             summary
         }
+
+    /**
+     * Fase 3: Busca candidatos de jogos na API online (Steam pt-BR + Catálogo HLTB).
+     */
+    suspend fun searchOnlineGames(query: String): List<RemoteGameMetadata> {
+        return metadataService.searchGames(query)
+    }
+
+    /**
+     * Fase 3: Busca detalhes completos (data, gêneros em pt-BR, tempos HLTB) de um candidato selecionado.
+     */
+    suspend fun resolveFullMetadata(candidate: RemoteGameMetadata): RemoteGameMetadata {
+        return metadataService.fetchBestMatchForTitle(
+            title = candidate.title,
+            existingExternalId = candidate.externalApiId
+        ) ?: candidate
+    }
+
+    /**
+     * Fase 3: Atualiza capa, data de lançamento, gêneros e tempos HLTB de um jogo existente
+     * preservando o tempo jogado, nota e memória afetiva do usuário.
+     */
+    suspend fun refreshGameMetadata(gameId: Long): Boolean {
+        val current = gameDao.getGameById(gameId) ?: return false
+        val remote = metadataService.fetchBestMatchForTitle(
+            title = current.title,
+            existingExternalId = current.externalApiId
+        ) ?: return false
+
+        val updated = current.copy(
+            externalApiId = remote.externalApiId ?: current.externalApiId,
+            coverUrl = remote.coverUrl ?: current.coverUrl,
+            backdropUrl = remote.backdropUrl ?: current.backdropUrl,
+            releaseDate = remote.releaseDateMillis ?: current.releaseDate,
+            genres = current.genres.ifBlank { remote.genres },
+            hltbMainSeconds = remote.hltbMainSeconds ?: current.hltbMainSeconds,
+            hltbExtraSeconds = remote.hltbExtraSeconds ?: current.hltbExtraSeconds,
+            hltbCompletionistSeconds = remote.hltbCompletionistSeconds ?: current.hltbCompletionistSeconds
+        )
+        gameDao.updateGame(updated)
+        return true
+    }
+
+    /**
+     * Fase 3: Sincroniza em lote jogos da biblioteca que estão sem capa ou sem referência HLTB.
+     */
+    suspend fun syncMissingMetadataBatch(): Int = withContext(Dispatchers.IO) {
+        val all = gameDao.getAllGamesSnapshot()
+        val targets = all.filter { it.coverUrl.isNullOrBlank() || it.hltbMainSeconds == null }
+        var updatedCount = 0
+
+        for (game in targets) {
+            val remote = metadataService.fetchBestMatchForTitle(
+                title = game.title,
+                existingExternalId = game.externalApiId
+            ) ?: continue
+
+            val newCover = game.coverUrl ?: remote.coverUrl
+            val newMain = game.hltbMainSeconds ?: remote.hltbMainSeconds
+            val newExtra = game.hltbExtraSeconds ?: remote.hltbExtraSeconds
+            val newComp = game.hltbCompletionistSeconds ?: remote.hltbCompletionistSeconds
+            val newGenres = game.genres.ifBlank { remote.genres }
+            val newRelease = game.releaseDate ?: remote.releaseDateMillis
+
+            if (newCover != game.coverUrl || newMain != game.hltbMainSeconds || newGenres != game.genres) {
+                gameDao.updateGame(
+                    game.copy(
+                        externalApiId = remote.externalApiId,
+                        coverUrl = newCover,
+                        backdropUrl = game.backdropUrl ?: remote.backdropUrl,
+                        releaseDate = newRelease,
+                        genres = newGenres,
+                        hltbMainSeconds = newMain,
+                        hltbExtraSeconds = newExtra,
+                        hltbCompletionistSeconds = newComp
+                    )
+                )
+                updatedCount++
+            }
+        }
+        updatedCount
+    }
 }

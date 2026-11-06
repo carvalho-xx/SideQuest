@@ -189,8 +189,35 @@ class GameVaultViewModel(
 
     fun saveGame(game: GameEntity) {
         viewModelScope.launch {
-            repository.saveGame(game)
+            val savedId = repository.saveGame(game)
             _statusMessage.value = "Jogo salvo: ${game.title}"
+            if (game.coverUrl.isNullOrBlank() || game.hltbMainSeconds == null) {
+                repository.refreshGameMetadata(savedId)
+            }
+        }
+    }
+
+    fun refreshGameMetadata(gameId: Long) {
+        viewModelScope.launch {
+            _statusMessage.value = "Buscando capa, data e duração online..."
+            val updated = repository.refreshGameMetadata(gameId)
+            _statusMessage.value = if (updated) {
+                "Dados e capa atualizados com sucesso!"
+            } else {
+                "Nenhuma informação adicional encontrada online."
+            }
+        }
+    }
+
+    fun syncMissingLibraryMetadata() {
+        viewModelScope.launch {
+            _statusMessage.value = "Sincronizando capas e durações da biblioteca..."
+            val count = repository.syncMissingMetadataBatch()
+            _statusMessage.value = if (count > 0) {
+                "$count jogos atualizados com capas e durações!"
+            } else {
+                "Biblioteca já está sincronizada."
+            }
         }
     }
 
@@ -251,6 +278,7 @@ class GameVaultViewModel(
                 onSuccess = { summary ->
                     _statusMessage.value =
                         "CSV importado: ${summary.completedCount} zerados, ${summary.playingCount} jogando (${summary.skippedDuplicateCount} duplicados ignorados)."
+                    repository.syncMissingMetadataBatch()
                 },
                 onFailure = { error ->
                     _statusMessage.value = "Erro ao importar CSV: ${error.localizedMessage ?: "formato inválido"}"

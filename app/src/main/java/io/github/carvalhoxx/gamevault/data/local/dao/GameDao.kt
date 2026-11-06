@@ -16,6 +16,9 @@ interface GameDao {
     @Query("SELECT * FROM games ORDER BY isMainFocus DESC, priority ASC, title ASC")
     fun observeAllGames(): Flow<List<GameEntity>>
 
+    @Query("SELECT * FROM games ORDER BY id ASC")
+    suspend fun getAllGamesSnapshot(): List<GameEntity>
+
     @Query("SELECT * FROM games WHERE status = :status ORDER BY isMainFocus DESC, priority ASC, completionDate DESC, title ASC")
     fun observeGamesByStatus(status: GameStatus): Flow<List<GameEntity>>
 
@@ -63,4 +66,17 @@ interface GameDao {
 
     @Query("UPDATE games SET isMainFocus = 0 WHERE id != :exceptGameId AND isMainFocus = 1")
     suspend fun clearMainFocusExcept(exceptGameId: Long)
+
+    @Query(
+        "SELECT DISTINCT TRIM(platform) FROM games " +
+            "WHERE TRIM(platform) != '' " +
+            "AND LOWER(TRIM(platform)) NOT IN ('não definida', 'sem plataforma')"
+    )
+    suspend fun getDistinctRegisteredPlatforms(): List<String>
+
+    @Query(
+        "UPDATE games SET platform = 'Sem plataforma' " +
+            "WHERE LOWER(TRIM(platform)) = LOWER(TRIM(:platformName))"
+    )
+    suspend fun clearPlatformFromAllGames(platformName: String)
 }

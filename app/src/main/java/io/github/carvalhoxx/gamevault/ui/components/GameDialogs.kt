@@ -1,5 +1,6 @@
 package io.github.carvalhoxx.gamevault.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +25,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -29,15 +34,20 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -45,11 +55,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.carvalhoxx.gamevault.data.local.GameVaultDatabase
+import io.github.carvalhoxx.gamevault.data.local.UserPlatformStore
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
+import io.github.carvalhoxx.gamevault.data.remote.GameMetadataService
+import io.github.carvalhoxx.gamevault.data.remote.HltbReferenceCatalog
+import io.github.carvalhoxx.gamevault.data.remote.RemoteGameMetadata
 import io.github.carvalhoxx.gamevault.domain.model.CompletionStyle
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
+import io.github.carvalhoxx.gamevault.ui.theme.DangerCrimson
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateCard
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateElevated
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateSurface
@@ -60,17 +76,19 @@ import io.github.carvalhoxx.gamevault.ui.theme.NeonPurpleSecondary
 import io.github.carvalhoxx.gamevault.ui.theme.TextMuted
 import io.github.carvalhoxx.gamevault.ui.theme.TextPrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.abs
 
 /**
- * Capa estilizada com gradiente dinâmico baseado no título do jogo (Null-safe quando sem URL).
+ * Capa oficial do jogo carregada via URL com cache em disco/memória e fallback estilizado Null-safe.
  */
 @Composable
 fun GameCoverArtwork(
     title: String,
+    coverUrl: String? = null,
     isHallOfFame: Boolean = false,
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 16.dp
@@ -91,6 +109,7 @@ fun GameCoverArtwork(
         .ifEmpty { "GV" }
 
     val borderColor = if (isHallOfFame) HallOfFameGold else NeonPurplePrimary.copy(alpha = 0.45f)
+    val remoteBitmap = rememberRemoteImageBitmap(coverUrl)
 
     Box(
         modifier = modifier
@@ -99,28 +118,37 @@ fun GameCoverArtwork(
             .border(1.dp, borderColor, RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(6.dp)
-        ) {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    letterSpacing = 1.5.sp
+        if (remoteBitmap != null) {
+            Image(
+                bitmap = remoteBitmap,
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(6.dp)
+            ) {
+                Text(
+                    text = initials,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        letterSpacing = 1.5.sp
+                    )
                 )
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 9.sp
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 9.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -272,8 +300,9 @@ fun BacklogRouletteDialog(
             ) {
                 GameCoverArtwork(
                     title = winner.title,
+                    coverUrl = winner.coverUrl,
                     isHallOfFame = winner.isHallOfFame,
-                    modifier = Modifier.size(88.dp)
+                    modifier = Modifier.size(width = 128.dp, height = 176.dp)
                 )
                 Text(
                     text = winner.title,
@@ -318,7 +347,7 @@ fun BacklogRouletteDialog(
 }
 
 /**
- * Modal de Criação/Edição de Jogo com suporte completo a campos HLTB/Data opcionais.
+ * Modal de Criação/Edição de Jogo com busca online de metadados (Fase 3: Capas, Datas e Tempos HLTB).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -327,47 +356,134 @@ fun GameFormDialog(
     onDismiss: () -> Unit,
     onSave: (GameEntity) -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val metadataService = remember { GameMetadataService() }
+    val gameDao = remember(context) { GameVaultDatabase.getInstance(context).gameDao() }
+
+    var userPlatforms by remember { mutableStateOf(UserPlatformStore.getPlatforms(context)) }
+    var isAddingPlatform by remember { mutableStateOf(userPlatforms.isEmpty()) }
+    var isManagingPlatforms by remember { mutableStateOf(false) }
+    var platformPendingDeletion by remember { mutableStateOf<String?>(null) }
+    var newPlatformInput by remember { mutableStateOf("") }
+
     var title by remember { mutableStateOf(initialGame?.title.orEmpty()) }
-    var platform by remember { mutableStateOf(initialGame?.platform ?: "PC") }
+    var externalApiId by remember { mutableStateOf(initialGame?.externalApiId) }
+    var coverUrl by remember { mutableStateOf(initialGame?.coverUrl) }
+    var backdropUrl by remember { mutableStateOf(initialGame?.backdropUrl) }
+    var platform by remember {
+        mutableStateOf(
+            initialGame?.platform
+                ?.takeIf { !it.equals("Sem plataforma", ignoreCase = true) && !it.equals("Não definida", ignoreCase = true) }
+                ?: userPlatforms.firstOrNull().orEmpty()
+        )
+    }
     var genres by remember { mutableStateOf(initialGame?.genres.orEmpty()) }
+
+    LaunchedEffect(Unit) {
+        val synced = UserPlatformStore.syncWithDatabasePlatforms(context, gameDao)
+        userPlatforms = synced
+        if (platform.isBlank() && synced.isNotEmpty()) {
+            platform = synced.first()
+        }
+        isAddingPlatform = synced.isEmpty()
+    }
     var status by remember { mutableStateOf(initialGame?.status ?: GameStatus.BACKLOG) }
     var priority by remember { mutableStateOf(initialGame?.priority ?: PriorityTier.TIER_B) }
-    var completionStyle by remember {
-        mutableStateOf(initialGame?.targetCompletionStyle ?: CompletionStyle.MAIN_STORY)
-    }
+    val completionStyle = initialGame?.targetCompletionStyle ?: CompletionStyle.MAIN_STORY
     var isMainFocus by remember { mutableStateOf(initialGame?.isMainFocus ?: false) }
 
     val initHltbMainHours = initialGame?.hltbMainSeconds?.let { (it / 3600L).toString() }.orEmpty()
+    val initHltbExtraHours = initialGame?.hltbExtraSeconds?.let { (it / 3600L).toString() }.orEmpty()
     val initHltb100Hours = initialGame?.hltbCompletionistSeconds?.let { (it / 3600L).toString() }.orEmpty()
-    val initCustomHours = initialGame?.userCustomEstimateSeconds?.let { (it / 3600L).toString() }.orEmpty()
+    val initCompletedHours = initialGame?.timePlayedSeconds
+        ?.takeIf { it > 0L }
+        ?.let { (it / 3600L).toString() }
+        .orEmpty()
 
     var hltbMainHoursText by remember { mutableStateOf(initHltbMainHours) }
+    var hltbExtraHoursText by remember { mutableStateOf(initHltbExtraHours) }
     var hltb100HoursText by remember { mutableStateOf(initHltb100Hours) }
-    var customHoursText by remember { mutableStateOf(initCustomHours) }
+    var completedHoursText by remember { mutableStateOf(initCompletedHours) }
+
+    var hasOnlineDuration by remember {
+        mutableStateOf((initialGame?.hltbMainSeconds ?: 0L) > 0L)
+    }
+    var hasOnlineReleaseDate by remember {
+        mutableStateOf((initialGame?.releaseDate ?: 0L) > 0L)
+    }
 
     val initDayMonth = remember(initialGame?.releaseDate) {
-        val ts = initialGame?.releaseDate
-        if (ts == null || ts <= 0L) {
-            ""
-        } else {
-            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
-            val d = cal.get(Calendar.DAY_OF_MONTH)
-            val m = cal.get(Calendar.MONTH) + 1
-            String.format(Locale.US, "%02d/%02d", d, m)
-        }
+        formatDayMonth(initialGame?.releaseDate)
     }
     val initYear = remember(initialGame?.releaseDate) {
-        val ts = initialGame?.releaseDate
-        if (ts == null || ts <= 0L) {
-            ""
-        } else {
-            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
-            cal.get(Calendar.YEAR).toString()
-        }
+        formatYear(initialGame?.releaseDate)
     }
 
     var releaseDayMonthText by remember { mutableStateOf(initDayMonth) }
     var releaseYearText by remember { mutableStateOf(initYear) }
+
+    var isSearchingOnline by remember { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf<List<RemoteGameMetadata>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    LaunchedEffect(searchQuery) {
+        val clean = searchQuery.trim()
+        if (clean.length < 2) {
+            searchResults = emptyList()
+            isSearchingOnline = false
+            return@LaunchedEffect
+        }
+        val instantCatalog = HltbReferenceCatalog.search(clean)
+        if (instantCatalog.isNotEmpty() && searchResults.isEmpty()) {
+            searchResults = instantCatalog
+        }
+        delay(250L)
+        isSearchingOnline = true
+        try {
+            val remote = metadataService.searchGames(clean)
+            if (remote.isNotEmpty()) {
+                searchResults = remote
+            } else if (instantCatalog.isNotEmpty()) {
+                searchResults = instantCatalog
+            } else {
+                searchResults = emptyList()
+            }
+        } finally {
+            isSearchingOnline = false
+        }
+    }
+
+    fun applyRemoteMetadata(meta: RemoteGameMetadata) {
+        searchQuery = ""
+        title = meta.title
+        externalApiId = meta.externalApiId
+        coverUrl = meta.coverUrl
+        backdropUrl = meta.backdropUrl ?: meta.coverUrl
+        if (meta.genres.isNotBlank()) {
+            genres = meta.genres
+        }
+        if (meta.releaseDateMillis != null && meta.releaseDateMillis > 0L) {
+            releaseDayMonthText = formatDayMonth(meta.releaseDateMillis)
+            releaseYearText = formatYear(meta.releaseDateMillis)
+            hasOnlineReleaseDate = true
+        }
+        if (meta.isUnreleased) {
+            hasOnlineDuration = false
+            hltbMainHoursText = ""
+            hltbExtraHoursText = ""
+            hltb100HoursText = ""
+            if (initialGame == null) {
+                status = GameStatus.DAY_ONE
+            }
+        } else {
+            val hasMain = (meta.hltbMainSeconds ?: 0L) > 0L
+            hasOnlineDuration = hasMain
+            meta.hltbMainSeconds?.let { hltbMainHoursText = (it / 3600L).toString() }
+            meta.hltbExtraSeconds?.let { hltbExtraHoursText = (it / 3600L).toString() }
+            meta.hltbCompletionistSeconds?.let { hltb100HoursText = (it / 3600L).toString() }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -385,206 +501,354 @@ fun GameFormDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Título do Jogo *", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (!coverUrl.isNullOrBlank()) {
+                        GameCoverArtwork(
+                            title = title.ifBlank { "GV" },
+                            coverUrl = coverUrl,
+                            modifier = Modifier.size(width = 56.dp, height = 78.dp),
+                            cornerRadius = 10.dp
+                        )
+                    }
+
                     OutlinedTextField(
-                        value = platform,
-                        onValueChange = { platform = it },
-                        label = { Text("Plataforma", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("PC, PS5...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = genres,
-                        onValueChange = { genres = it },
-                        label = { Text("Gêneros", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("RPG, Ação...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        value = title,
+                        onValueChange = {
+                            title = it
+                            searchQuery = it
+                            if (it.trim().isEmpty()) {
+                                hasOnlineDuration = false
+                                hasOnlineReleaseDate = false
+                            }
+                        },
+                        label = { Text("Título do Jogo *", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                Text("Status:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    GameStatus.entries.forEach { item ->
-                        FilterChip(
-                            selected = status == item,
-                            onClick = { status = item },
-                            label = {
-                                Text(
-                                    text = item.displayName,
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    softWrap = false
+                if (isSearchingOnline) {
+                    Text(
+                        text = "Buscando correspondências...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NeonPurpleGlow
+                    )
+                }
+
+                if (searchResults.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DeepSlateCard)
+                            .border(1.dp, NeonPurplePrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        searchResults.take(5).forEach { candidate ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(DeepSlateSurface)
+                                    .clickable {
+                                        searchResults = emptyList()
+                                        applyRemoteMetadata(candidate)
+                                        coroutineScope.launch {
+                                            val detailed = metadataService.fetchBestMatchForTitle(
+                                                title = candidate.title,
+                                                existingExternalId = candidate.externalApiId
+                                            )
+                                            if (detailed != null) {
+                                                applyRemoteMetadata(detailed)
+                                            }
+                                        }
+                                    }
+                                    .padding(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                GameCoverArtwork(
+                                    title = candidate.title,
+                                    coverUrl = candidate.coverUrl,
+                                    modifier = Modifier.size(width = 40.dp, height = 54.dp),
+                                    cornerRadius = 6.dp
                                 )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NeonPurplePrimary.copy(alpha = 0.25f),
-                                selectedLabelColor = NeonPurpleGlow
-                            )
-                        )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = candidate.title,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    val durationLabel = if (candidate.isUnreleased) {
+                                        "Inédito • Duração a definir"
+                                    } else {
+                                        "Campanha: ${TimeFormatUtils.formatHltbReferenceOrTbd(candidate.hltbMainSeconds)}"
+                                    }
+                                    Text(
+                                        text = "${candidate.platform} • $durationLabel",
+                                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
-                Text("Prioridade:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PriorityTier.entries.forEach { tier ->
-                        val isSelected = priority == tier
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (isSelected) NeonPurpleSecondary.copy(alpha = 0.35f) else DeepSlateCard
-                                )
-                                .border(
-                                    width = if (isSelected) 1.5.dp else 1.dp,
-                                    color = if (isSelected) NeonPurplePrimary else DeepSlateElevated,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                                .clickable { priority = tier },
-                            contentAlignment = Alignment.Center
-                        ) {
+                // Plataformas com pílulas compactas (sem o espaçamento vertical exagerado do FilterChip)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isManagingPlatforms) {
+                                "Toque em uma plataforma para excluí-la:"
+                            } else {
+                                "Minhas Plataformas:"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isManagingPlatforms) DangerCrimson else TextSecondary
+                        )
+                        if (userPlatforms.isNotEmpty()) {
                             Text(
-                                text = "Nível ${tier.badge}",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = if (isSelected) NeonPurpleGlow else TextSecondary,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 12.sp
+                                text = if (isManagingPlatforms) "Concluir" else "Gerenciar",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isManagingPlatforms) NeonPurpleGlow else TextMuted,
+                                    fontWeight = FontWeight.SemiBold
                                 ),
-                                maxLines = 1,
-                                softWrap = false
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { isManagingPlatforms = !isManagingPlatforms }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        userPlatforms.forEach { option ->
+                            val isSelected = platform.equals(option, ignoreCase = true)
+                            CompactSelectPill(
+                                text = if (isManagingPlatforms) "🗑 $option" else option,
+                                selected = if (isManagingPlatforms) false else isSelected,
+                                isDanger = isManagingPlatforms,
+                                onClick = {
+                                    if (isManagingPlatforms) {
+                                        platformPendingDeletion = option
+                                    } else {
+                                        platform = option
+                                    }
+                                }
+                            )
+                        }
+                        if (!isManagingPlatforms) {
+                            CompactSelectPill(
+                                text = "+ Nova Plataforma",
+                                selected = isAddingPlatform,
+                                isAction = true,
+                                onClick = { isAddingPlatform = !isAddingPlatform }
                             )
                         }
                     }
                 }
 
-                Text("Estilo de Meta:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    CompletionStyle.entries.forEach { style ->
-                        FilterChip(
-                            selected = completionStyle == style,
-                            onClick = { completionStyle = style },
-                            label = {
-                                Text(
-                                    text = style.shortLabel,
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NeonPurplePrimary.copy(alpha = 0.25f),
-                                selectedLabelColor = NeonPurpleGlow
-                            )
+                if (isAddingPlatform) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = newPlatformInput,
+                            onValueChange = { newPlatformInput = it },
+                            label = { Text("Criar Plataforma", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("Ex: PC, PS5, Switch...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
                         )
+                        Button(
+                            onClick = {
+                                val cleanNew = newPlatformInput.trim()
+                                if (cleanNew.isNotEmpty()) {
+                                    userPlatforms = UserPlatformStore.addPlatform(context, cleanNew)
+                                    platform = cleanNew
+                                    newPlatformInput = ""
+                                    isAddingPlatform = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text("Adicionar", color = Color(0xFF140526), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
-                Text(
-                    text = "Duração Estimada em Horas (Deixe vazio se a definir):",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondary
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                // Status com pílulas compactas
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Status:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        GameStatus.entries.forEach { item ->
+                            CompactSelectPill(
+                                text = item.displayName,
+                                selected = status == item,
+                                onClick = { status = item }
+                            )
+                        }
+                    }
+                }
+
+                // Prioridade compacta em 1 linha
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Prioridade:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        PriorityTier.entries.forEach { tier ->
+                            val isSelected = priority == tier
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isSelected) NeonPurpleSecondary.copy(alpha = 0.35f) else DeepSlateCard
+                                    )
+                                    .border(
+                                        width = if (isSelected) 1.5.dp else 1.dp,
+                                        color = if (isSelected) NeonPurplePrimary else DeepSlateElevated,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { priority = tier },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Nível ${tier.badge}",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = if (isSelected) NeonPurpleGlow else TextSecondary,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 11.sp
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Duração:
+                // - Se o usuário selecionar Zerado: informa quantas horas levou para zerar.
+                // - Se NÃO tiver duração no BD online (ex: lançamento futuro ou jogo sem dados): permite opinar a duração da campanha.
+                // - Se o jogo já tiver sido lançado e já tiver duração no BD online: fica oculto para manter o menu limpo.
+                if (status == GameStatus.COMPLETED) {
+                    OutlinedTextField(
+                        value = completedHoursText,
+                        onValueChange = { completedHoursText = it.filter(Char::isDigit).take(4) },
+                        label = { Text("Duração para Zerar (Horas)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = {
+                            Text(
+                                text = if (hltbMainHoursText.isNotBlank()) "Ex: $hltbMainHoursText" else "Ex: 35",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (!hasOnlineDuration) {
                     OutlinedTextField(
                         value = hltbMainHoursText,
                         onValueChange = { hltbMainHoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("Campanha (h)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("A definir", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        label = { Text("Duração Estimada da Campanha (h)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("Opcional (deixe vazio se a definir)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = hltb100HoursText,
-                        onValueChange = { hltb100HoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("100% (h)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("A definir", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                OutlinedTextField(
-                    value = customHoursText,
-                    onValueChange = { customHoursText = it.filter(Char::isDigit).take(4) },
-                    label = { Text("Meta Pessoal em Horas (Opcional)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    placeholder = { Text("Ex: 40", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    text = "Data de Lançamento (Opcional):",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondary
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = releaseDayMonthText,
-                        onValueChange = { releaseDayMonthText = it.take(5) },
-                        label = { Text("Dia/Mês", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("19/11", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = releaseYearText,
-                        onValueChange = { releaseYearText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("Ano", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("2026", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Jogo Principal do Momento",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f)
+                // Só exibe campos manuais de Gêneros / Data de Lançamento se o BD online não tiver preenchido
+                if (genres.isBlank()) {
+                    OutlinedTextField(
+                        value = genres,
+                        onValueChange = { genres = it },
+                        label = { Text("Gêneros (Opcional)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        placeholder = { Text("RPG, Ação...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Switch(
-                        checked = isMainFocus,
-                        onCheckedChange = { isMainFocus = it }
-                    )
+                }
+
+                if (!hasOnlineReleaseDate) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Data de Lançamento (Opcional):",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = releaseDayMonthText,
+                                onValueChange = { releaseDayMonthText = it.take(5) },
+                                label = { Text("Dia/Mês", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("19/11", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = releaseYearText,
+                                onValueChange = { releaseYearText = it.filter(Char::isDigit).take(4) },
+                                label = { Text("Ano", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("2026", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                if (status == GameStatus.PLAYING) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Jogo Principal do Momento",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = isMainFocus,
+                            onCheckedChange = { isMainFocus = it }
+                        )
+                    }
                 }
             }
         },
@@ -594,27 +858,58 @@ fun GameFormDialog(
                     val cleanTitle = title.trim()
                     if (cleanTitle.isEmpty()) return@Button
 
+                    val pendingNewPlatform = newPlatformInput.trim()
+                    val chosenPlatform = when {
+                        pendingNewPlatform.isNotEmpty() -> {
+                            UserPlatformStore.addPlatform(context, pendingNewPlatform)
+                            pendingNewPlatform
+                        }
+                        platform.trim().isNotEmpty() -> {
+                            UserPlatformStore.addPlatform(context, platform.trim())
+                            platform.trim()
+                        }
+                        else -> "Sem plataforma"
+                    }
+
                     val hltbMainSec = hltbMainHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
+                    val hltbExtraSec = hltbExtraHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
                     val hltb100Sec = hltb100HoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
-                    val customSec = customHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
+                    val completedSec = completedHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
                     val parsedRelease = TimeFormatUtils.parseDayMonthAndYearToMillis(
                         releaseDayMonthText,
                         releaseYearText
                     ) ?: initialGame?.releaseDate
 
                     val base = initialGame ?: GameEntity(title = cleanTitle)
+                    val finalTimePlayed = if (status == GameStatus.COMPLETED && completedSec != null) {
+                        completedSec
+                    } else {
+                        base.timePlayedSeconds
+                    }
+                    val finalCompletionDate = if (status == GameStatus.COMPLETED) {
+                        base.completionDate ?: System.currentTimeMillis()
+                    } else {
+                        base.completionDate
+                    }
+
                     onSave(
                         base.copy(
                             title = cleanTitle,
-                            platform = platform.trim().ifEmpty { "PC" },
+                            externalApiId = externalApiId ?: base.externalApiId,
+                            coverUrl = coverUrl ?: base.coverUrl,
+                            backdropUrl = backdropUrl ?: base.backdropUrl,
+                            platform = chosenPlatform,
                             genres = genres.trim(),
                             status = status,
                             priority = priority,
                             targetCompletionStyle = completionStyle,
-                            isMainFocus = isMainFocus,
-                            hltbMainSeconds = hltbMainSec,
+                            isMainFocus = status == GameStatus.PLAYING && isMainFocus,
+                            timePlayedSeconds = finalTimePlayed,
+                            completionDate = finalCompletionDate,
+                            hltbMainSeconds = hltbMainSec ?: (if (status == GameStatus.COMPLETED) completedSec else null),
+                            hltbExtraSeconds = hltbExtraSec ?: base.hltbExtraSeconds,
                             hltbCompletionistSeconds = hltb100Sec,
-                            userCustomEstimateSeconds = customSec,
+                            userCustomEstimateSeconds = null,
                             releaseDate = parsedRelease,
                             isOwned = status != GameStatus.WISHLIST
                         )
@@ -631,4 +926,114 @@ fun GameFormDialog(
             }
         }
     )
+
+    platformPendingDeletion?.let { targetPlatform ->
+        AlertDialog(
+            onDismissRequest = { platformPendingDeletion = null },
+            containerColor = DeepSlateSurface,
+            title = {
+                Text(
+                    text = "Excluir plataforma \"$targetPlatform\"?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DangerCrimson
+                )
+            },
+            text = {
+                Text(
+                    text = "Todos os jogos cadastrados com a plataforma \"$targetPlatform\" perderão essa plataforma (ficarão como \"Sem plataforma\"). Deseja continuar?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            val updated = UserPlatformStore.deletePlatformEverywhere(
+                                context = context,
+                                gameDao = gameDao,
+                                platformName = targetPlatform
+                            )
+                            userPlatforms = updated
+                            if (platform.equals(targetPlatform, ignoreCase = true)) {
+                                platform = updated.firstOrNull().orEmpty()
+                            }
+                            if (updated.isEmpty()) {
+                                isManagingPlatforms = false
+                                isAddingPlatform = true
+                            }
+                            platformPendingDeletion = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerCrimson)
+                ) {
+                    Text("Sim, Excluir Plataforma", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { platformPendingDeletion = null }) {
+                    Text("Cancelar", color = TextSecondary)
+                }
+            }
+        )
+    }
+}
+
+private fun formatDayMonth(timestampMillis: Long?): String {
+    if (timestampMillis == null || timestampMillis <= 0L) return ""
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = timestampMillis }
+    val d = cal.get(Calendar.DAY_OF_MONTH)
+    val m = cal.get(Calendar.MONTH) + 1
+    return String.format(Locale.US, "%02d/%02d", d, m)
+}
+
+private fun formatYear(timestampMillis: Long?): String {
+    if (timestampMillis == null || timestampMillis <= 0L) return ""
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = timestampMillis }
+    return cal.get(Calendar.YEAR).toString()
+}
+
+@Composable
+private fun CompactSelectPill(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    isDanger: Boolean = false,
+    isAction: Boolean = false
+) {
+    val bgColor = when {
+        isDanger -> DangerCrimson.copy(alpha = 0.14f)
+        selected -> NeonPurplePrimary.copy(alpha = 0.25f)
+        isAction -> DeepSlateElevated
+        else -> DeepSlateCard
+    }
+    val borderColor = when {
+        isDanger -> DangerCrimson.copy(alpha = 0.7f)
+        selected -> NeonPurplePrimary
+        else -> DeepSlateElevated
+    }
+    val textColor = when {
+        isDanger -> DangerCrimson
+        selected || isAction -> NeonPurpleGlow
+        else -> TextSecondary
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = textColor,
+            maxLines = 1,
+            softWrap = false
+        )
+    }
 }

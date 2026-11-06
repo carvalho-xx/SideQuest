@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +57,7 @@ import io.github.carvalhoxx.gamevault.ui.components.AppIcons
 import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.components.GameFormDialog
 import io.github.carvalhoxx.gamevault.ui.components.ManualTimePickerDialog
+import io.github.carvalhoxx.gamevault.ui.theme.DangerCrimson
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateBackground
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateCard
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateElevated
@@ -83,6 +86,7 @@ fun GameDetailScreen(
     onMarkAsCompleted: (GameEntity) -> Unit,
     onSaveGame: (GameEntity) -> Unit,
     onDeleteGame: (Long) -> Unit,
+    onRefreshOnlineMetadata: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (game == null) {
@@ -99,6 +103,7 @@ fun GameDetailScreen(
 
     var showManualTimeDialog by remember { mutableStateOf(false) }
     var showEditGameDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var isMemoryExpanded by remember(game.id) { mutableStateOf(false) }
 
     var selectedRating by remember(game.id, game.personalRating) {
@@ -181,6 +186,21 @@ fun GameDetailScreen(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
+                            onClick = { onRefreshOnlineMetadata(game.id) },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(DeepSlateCard)
+                                .border(1.dp, DeepSlateElevated, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Sync,
+                                contentDescription = "Atualizar capa e tempos online",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        IconButton(
                             onClick = { showEditGameDialog = true },
                             modifier = Modifier
                                 .size(42.dp)
@@ -196,7 +216,7 @@ fun GameDetailScreen(
                             )
                         }
                         IconButton(
-                            onClick = { onDeleteGame(game.id) },
+                            onClick = { showDeleteConfirmDialog = true },
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(CircleShape)
@@ -215,12 +235,13 @@ fun GameDetailScreen(
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.Bottom
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     GameCoverArtwork(
                         title = game.title,
+                        coverUrl = game.coverUrl,
                         isHallOfFame = selectedRating != null && selectedRating!! >= 11.0f,
-                        modifier = Modifier.size(112.dp),
+                        modifier = Modifier.size(width = 148.dp, height = 208.dp),
                         cornerRadius = 18.dp
                     )
 
@@ -294,7 +315,7 @@ fun GameDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 DetailTagPill(
-                    text = "🕒 Campanha HLTB: ${TimeFormatUtils.formatHltbReferenceOrTbd(game.hltbMainSeconds)}",
+                    text = "🕒 Campanha: ${TimeFormatUtils.formatHltbReferenceOrTbd(game.hltbMainSeconds)}",
                     bgColor = DeepSlateCard,
                     textColor = TextSecondary
                 )
@@ -760,6 +781,44 @@ fun GameDetailScreen(
             onSave = { updated ->
                 onSaveGame(updated)
                 showEditGameDialog = false
+            }
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            containerColor = DeepSlateSurface,
+            title = {
+                Text(
+                    text = "Excluir \"${game.title}\"?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DangerCrimson
+                )
+            },
+            text = {
+                Text(
+                    text = "Tem certeza que deseja excluir \"${game.title}\" da sua biblioteca? Todo o tempo registrado, nota e memória afetiva serão apagados permanentemente.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDeleteGame(game.id)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerCrimson)
+                ) {
+                    Text("Sim, Excluir Jogo", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancelar", color = TextSecondary)
+                }
             }
         )
     }

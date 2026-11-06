@@ -83,6 +83,7 @@ fun LibraryScreen(
     onOpenGameDetails: (Long) -> Unit,
     onSaveGame: (GameEntity) -> Unit,
     onImportCsvUri: (Uri) -> Unit,
+    onSyncMissingMetadata: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAdvancedFilters by remember { mutableStateOf(false) }
@@ -182,10 +183,10 @@ fun LibraryScreen(
             }
         }
 
-        // 2. Linha de Ações: Importador CSV + Roleta da Fila
+        // 2. Linha de Ações: Importador CSV + Sincronizar Online + Roleta da Fila
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
@@ -195,7 +196,7 @@ fun LibraryScreen(
                     )
                 },
                 shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = "📥 Importar CSV",
@@ -208,15 +209,31 @@ fun LibraryScreen(
                 )
             }
 
+            IconButton(
+                onClick = onSyncMissingMetadata,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(DeepSlateCard)
+                    .border(1.dp, DeepSlateElevated, CircleShape)
+            ) {
+                Icon(
+                    imageVector = AppIcons.Sync,
+                    contentDescription = "Sincronizar capas e durações",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
             Button(
                 onClick = onSpinRoulette,
                 colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary),
                 shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "🎲 Roleta da Fila (Sortear)",
+                    text = "🎲 Roleta da Fila",
                     style = MaterialTheme.typography.labelLarge.copy(
                         color = Color(0xFF140526),
                         fontWeight = FontWeight.ExtraBold
@@ -459,6 +476,7 @@ private fun LibraryGameCard(
     ) {
         GameCoverArtwork(
             title = game.title,
+            coverUrl = game.coverUrl,
             isHallOfFame = isLifeChanging,
             modifier = Modifier.size(92.dp),
             cornerRadius = 16.dp

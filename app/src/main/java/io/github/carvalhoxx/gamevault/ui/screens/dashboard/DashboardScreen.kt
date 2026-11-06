@@ -442,39 +442,54 @@ private fun CurrentlyPlayingHeroCard(
                 )
             }
 
-            // 2. Título + Plataforma/Gênero/Meta em FlowRow (sem quebrar feio)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "FOCO PRINCIPAL",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = HallOfFameGold,
-                        letterSpacing = 1.4.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+            // 2. Título + Capa + Plataforma/Gênero/Meta em FlowRow
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GameCoverArtwork(
+                    title = game.title,
+                    coverUrl = game.coverUrl,
+                    isHallOfFame = game.isHallOfFame,
+                    modifier = Modifier.size(76.dp),
+                    cornerRadius = 14.dp
                 )
-                Text(
-                    text = game.title,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        color = TextPrimary,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    SmallTagPill(text = game.platform, backgroundColor = DeepSlateElevated)
-                    if (game.genres.isNotBlank()) {
+                    Text(
+                        text = "FOCO PRINCIPAL",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = HallOfFameGold,
+                            letterSpacing = 1.4.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Text(
+                        text = game.title,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SmallTagPill(text = game.platform, backgroundColor = DeepSlateElevated)
+                        if (game.genres.isNotBlank()) {
+                            SmallTagPill(
+                                text = game.genres.split(",").first().trim(),
+                                backgroundColor = DeepSlateElevated
+                            )
+                        }
                         SmallTagPill(
-                            text = game.genres.split(",").first().trim(),
-                            backgroundColor = DeepSlateElevated
+                            text = "Meta: ${game.targetCompletionStyle.shortLabel}",
+                            backgroundColor = NeonPurpleSecondary.copy(alpha = 0.28f),
+                            textColor = NeonPurpleGlow
                         )
                     }
-                    SmallTagPill(
-                        text = "Meta: ${game.targetCompletionStyle.shortLabel}",
-                        backgroundColor = NeonPurpleSecondary.copy(alpha = 0.28f),
-                        textColor = NeonPurpleGlow
-                    )
                 }
             }
 
@@ -498,7 +513,7 @@ private fun CurrentlyPlayingHeroCard(
                         softWrap = false
                     )
                     SmallTagPill(
-                        text = "Média HLTB: ${TimeFormatUtils.formatHltbReferenceOrTbd(hltbTargetSeconds)}",
+                        text = "Campanha: ${TimeFormatUtils.formatHltbReferenceOrTbd(hltbTargetSeconds)}",
                         backgroundColor = NeonPurplePrimary.copy(alpha = 0.18f),
                         textColor = NeonPurpleGlow
                     )
@@ -674,6 +689,7 @@ private fun DayOneRadarCard(
         Box(modifier = Modifier.fillMaxWidth()) {
             GameCoverArtwork(
                 title = game.title,
+                coverUrl = game.coverUrl,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(105.dp),
@@ -844,6 +860,7 @@ private fun PersonalGotyBannerCard(
     ) {
         GameCoverArtwork(
             title = game.title,
+            coverUrl = game.coverUrl,
             isHallOfFame = true,
             modifier = Modifier.size(64.dp),
             cornerRadius = 12.dp
