@@ -252,6 +252,146 @@ fun ManualTimePickerDialog(
 }
 
 /**
+ * Modal de conclusão de jogo: solicita Tempo para Zerar (Horas, Minutos, Segundos) e Data em que Zerou (Dia/Mês e Ano).
+ */
+@Composable
+fun CompleteGameDialog(
+    gameTitle: String,
+    initialSeconds: Long,
+    initialCompletionDateMillis: Long?,
+    onDismiss: () -> Unit,
+    onConfirm: (totalSeconds: Long, completionDateMillis: Long) -> Unit
+) {
+    val initH = (initialSeconds / 3600L).coerceAtLeast(0L)
+    val initM = ((initialSeconds % 3600L) / 60L).coerceIn(0L, 59L)
+    val initS = (initialSeconds % 60L).coerceIn(0L, 59L)
+
+    var hoursText by remember { mutableStateOf(if (initialSeconds > 0L) initH.toString() else "") }
+    var minutesText by remember { mutableStateOf(if (initialSeconds > 0L) String.format(Locale.US, "%02d", initM) else "") }
+    var secondsText by remember { mutableStateOf(if (initialSeconds > 0L) String.format(Locale.US, "%02d", initS) else "") }
+
+    val defaultMillis = remember(initialCompletionDateMillis) {
+        initialCompletionDateMillis?.takeIf { it > 0L } ?: System.currentTimeMillis()
+    }
+    var dayMonthText by remember { mutableStateOf(formatDayMonth(defaultMillis)) }
+    var yearText by remember { mutableStateOf(formatYear(defaultMillis)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DeepSlateSurface,
+        titleContentColor = TextPrimary,
+        title = {
+            Column {
+                Text(
+                    text = "🏆 Marcar como Zerado",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = gameTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NeonPurpleGlow
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Tempo para Zerar:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = hoursText,
+                            onValueChange = { hoursText = it.filter(Char::isDigit).take(4) },
+                            label = { Text("Horas", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = minutesText,
+                            onValueChange = { minutesText = it.filter(Char::isDigit).take(2) },
+                            label = { Text("Min", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = secondsText,
+                            onValueChange = { secondsText = it.filter(Char::isDigit).take(2) },
+                            label = { Text("Seg", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Data em que Zerou:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = dayMonthText,
+                            onValueChange = { dayMonthText = it.take(5) },
+                            label = { Text("Dia/Mês", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("06/11", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = yearText,
+                            onValueChange = { yearText = it.filter(Char::isDigit).take(4) },
+                            label = { Text("Ano", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("2026", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val h = hoursText.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+                    val m = (minutesText.toLongOrNull() ?: 0L).coerceIn(0L, 59L)
+                    val s = (secondsText.toLongOrNull() ?: 0L).coerceIn(0L, 59L)
+                    val totalSec = (h * 3600L) + (m * 60L) + s
+                    val completionMillis = TimeFormatUtils.parseDayMonthAndYearToMillis(dayMonthText, yearText)
+                        ?: defaultMillis
+                    onConfirm(totalSec, completionMillis)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary)
+            ) {
+                Text("Salvar Conclusão", color = Color(0xFF140526), fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = TextSecondary)
+            }
+        }
+    )
+}
+
+/**
  * Modal da Roleta da Fila (sorteia apenas jogos na fila).
  */
 @Composable
@@ -396,15 +536,24 @@ fun GameFormDialog(
     val initHltbMainHours = initialGame?.hltbMainSeconds?.let { (it / 3600L).toString() }.orEmpty()
     val initHltbExtraHours = initialGame?.hltbExtraSeconds?.let { (it / 3600L).toString() }.orEmpty()
     val initHltb100Hours = initialGame?.hltbCompletionistSeconds?.let { (it / 3600L).toString() }.orEmpty()
-    val initCompletedHours = initialGame?.timePlayedSeconds
-        ?.takeIf { it > 0L }
-        ?.let { (it / 3600L).toString() }
-        .orEmpty()
+
+    val initPlayedSec = initialGame?.timePlayedSeconds ?: 0L
+    val initCompletedHours = if (initPlayedSec > 0L) (initPlayedSec / 3600L).toString() else ""
+    val initCompletedMinutes = if (initPlayedSec > 0L) ((initPlayedSec % 3600L) / 60L).toString() else ""
+    val initCompletedSeconds = if (initPlayedSec > 0L) (initPlayedSec % 60L).toString() else ""
 
     var hltbMainHoursText by remember { mutableStateOf(initHltbMainHours) }
     var hltbExtraHoursText by remember { mutableStateOf(initHltbExtraHours) }
     var hltb100HoursText by remember { mutableStateOf(initHltb100Hours) }
     var completedHoursText by remember { mutableStateOf(initCompletedHours) }
+    var completedMinutesText by remember { mutableStateOf(initCompletedMinutes) }
+    var completedSecondsText by remember { mutableStateOf(initCompletedSeconds) }
+
+    val defaultCompletionMillis = remember(initialGame?.completionDate) {
+        initialGame?.completionDate?.takeIf { it > 0L } ?: System.currentTimeMillis()
+    }
+    var completionDayMonthText by remember { mutableStateOf(formatDayMonth(defaultCompletionMillis)) }
+    var completionYearText by remember { mutableStateOf(formatYear(defaultCompletionMillis)) }
 
     var hasOnlineDuration by remember {
         mutableStateOf((initialGame?.hltbMainSeconds ?: 0L) > 0L)
@@ -756,26 +905,80 @@ fun GameFormDialog(
                     }
                 }
 
-                // Duração:
-                // - Se o usuário selecionar Zerado: informa quantas horas levou para zerar.
+                // Duração e Data de Conclusão:
+                // - Se o usuário selecionar Zerado: pede Horas, Minutos e Segundos + Data em que Zerou (Base do GOTY).
                 // - Se NÃO tiver duração no BD online (ex: lançamento futuro ou jogo sem dados): permite opinar a duração da campanha.
                 // - Se o jogo já tiver sido lançado e já tiver duração no BD online: fica oculto para manter o menu limpo.
                 if (status == GameStatus.COMPLETED) {
-                    OutlinedTextField(
-                        value = completedHoursText,
-                        onValueChange = { completedHoursText = it.filter(Char::isDigit).take(4) },
-                        label = { Text("Duração para Zerar (Horas)", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = {
-                            Text(
-                                text = if (hltbMainHoursText.isNotBlank()) "Ex: $hltbMainHoursText" else "Ex: 35",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Tempo para Zerar:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = completedHoursText,
+                                onValueChange = { completedHoursText = it.filter(Char::isDigit).take(4) },
+                                label = { Text("Horas", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
                             )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = completedMinutesText,
+                                onValueChange = { completedMinutesText = it.filter(Char::isDigit).take(2) },
+                                label = { Text("Min", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = completedSecondsText,
+                                onValueChange = { completedSecondsText = it.filter(Char::isDigit).take(2) },
+                                label = { Text("Seg", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("00", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Data em que Zerou:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = completionDayMonthText,
+                                onValueChange = { completionDayMonthText = it.take(5) },
+                                label = { Text("Dia/Mês", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("06/11", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = completionYearText,
+                                onValueChange = { completionYearText = it.filter(Char::isDigit).take(4) },
+                                label = { Text("Ano", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text("2026", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 } else if (!hasOnlineDuration) {
                     OutlinedTextField(
                         value = hltbMainHoursText,
@@ -874,11 +1077,21 @@ fun GameFormDialog(
                     val hltbMainSec = hltbMainHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
                     val hltbExtraSec = hltbExtraHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
                     val hltb100Sec = hltb100HoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
-                    val completedSec = completedHoursText.toLongOrNull()?.takeIf { it > 0L }?.times(3600L)
+
+                    val compH = completedHoursText.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+                    val compM = completedMinutesText.toLongOrNull()?.coerceIn(0L, 59L) ?: 0L
+                    val compS = completedSecondsText.toLongOrNull()?.coerceIn(0L, 59L) ?: 0L
+                    val completedSec = ((compH * 3600L) + (compM * 60L) + compS).takeIf { it > 0L }
+
                     val parsedRelease = TimeFormatUtils.parseDayMonthAndYearToMillis(
                         releaseDayMonthText,
                         releaseYearText
                     ) ?: initialGame?.releaseDate
+
+                    val parsedCompletionDate = TimeFormatUtils.parseDayMonthAndYearToMillis(
+                        completionDayMonthText,
+                        completionYearText
+                    )
 
                     val base = initialGame ?: GameEntity(title = cleanTitle)
                     val finalTimePlayed = if (status == GameStatus.COMPLETED && completedSec != null) {
@@ -887,7 +1100,7 @@ fun GameFormDialog(
                         base.timePlayedSeconds
                     }
                     val finalCompletionDate = if (status == GameStatus.COMPLETED) {
-                        base.completionDate ?: System.currentTimeMillis()
+                        parsedCompletionDate ?: base.completionDate ?: System.currentTimeMillis()
                     } else {
                         base.completionDate
                     }

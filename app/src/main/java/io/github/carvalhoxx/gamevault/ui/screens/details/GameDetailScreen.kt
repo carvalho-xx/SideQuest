@@ -54,6 +54,7 @@ import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
 import io.github.carvalhoxx.gamevault.ui.components.AppIcons
+import io.github.carvalhoxx.gamevault.ui.components.CompleteGameDialog
 import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.components.GameFormDialog
 import io.github.carvalhoxx.gamevault.ui.components.ManualTimePickerDialog
@@ -103,6 +104,7 @@ fun GameDetailScreen(
 
     var showManualTimeDialog by remember { mutableStateOf(false) }
     var showEditGameDialog by remember { mutableStateOf(false) }
+    var showCompleteGameDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var isMemoryExpanded by remember(game.id) { mutableStateOf(false) }
 
@@ -135,6 +137,22 @@ fun GameDetailScreen(
         } else {
             val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
             cal.get(Calendar.YEAR).toString()
+        }
+    }
+
+    val completionDateStr = remember(game.completionDate) {
+        val ts = game.completionDate
+        if (ts == null || ts <= 0L) {
+            null
+        } else {
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = ts }
+            String.format(
+                Locale.US,
+                "%02d/%02d/%04d",
+                cal.get(Calendar.DAY_OF_MONTH),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.YEAR)
+            )
         }
     }
 
@@ -260,6 +278,16 @@ fun GameDetailScreen(
                             text = "$releaseYearStr • ${game.status.displayName}",
                             style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
                         )
+                        if (game.status == GameStatus.COMPLETED && completionDateStr != null) {
+                            Text(
+                                text = "🏆 Zerado em $completionDateStr",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = HallOfFameGold,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.clickable { showCompleteGameDialog = true }
+                            )
+                        }
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -740,7 +768,7 @@ fun GameDetailScreen(
         // 5. Botão Principal Inferior: Marcar como Zerado (visível apenas quando ainda não está zerado)
         if (game.status != GameStatus.COMPLETED) {
             Button(
-                onClick = { onMarkAsCompleted(game) },
+                onClick = { showCompleteGameDialog = true },
                 colors = ButtonDefaults.buttonColors(containerColor = NeonPurplePrimary),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(vertical = 15.dp, horizontal = 20.dp),
@@ -760,6 +788,27 @@ fun GameDetailScreen(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+    }
+
+    if (showCompleteGameDialog) {
+        CompleteGameDialog(
+            gameTitle = game.title,
+            initialSeconds = liveSeconds,
+            initialCompletionDateMillis = game.completionDate,
+            onDismiss = { showCompleteGameDialog = false },
+            onConfirm = { totalSec, completionMillis ->
+                showCompleteGameDialog = false
+                onSaveGame(
+                    game.copy(
+                        status = GameStatus.COMPLETED,
+                        isMainFocus = false,
+                        timePlayedSeconds = totalSec,
+                        activeTimerStartTime = null,
+                        completionDate = completionMillis
+                    )
+                )
+            }
+        )
     }
 
     if (showManualTimeDialog) {
