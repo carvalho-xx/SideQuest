@@ -9,7 +9,7 @@ import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
 object HltbReferenceCatalog {
 
     private fun igdbCover(imageId: String) =
-        "https://images.igdb.com/igdb/image/upload/t_cover_big/$imageId.jpg"
+        if (imageId.startsWith("http")) imageId else "https://images.igdb.com/igdb/image/upload/t_cover_big/$imageId.jpg"
 
     private fun entry(
         id: String,
@@ -30,7 +30,7 @@ object HltbReferenceCatalog {
             coverUrl = igdbCoverId?.let(::igdbCover),
             backdropUrl = igdbCoverId?.let(::igdbCover),
             releaseDateMillis = TimeFormatUtils.parseDayMonthAndYearToMillis(dayMonth, year),
-            genres = genres,
+            genres = GameMetadataService.normalizeGenresPtBr(genres),
             platform = platform,
             hltbMainSeconds = if (isUnreleased) null else mainHours?.times(3600L),
             hltbExtraSeconds = if (isUnreleased) null else extraHours?.times(3600L),
@@ -44,7 +44,7 @@ object HltbReferenceCatalog {
         entry(
             id = "gta_vi",
             title = "Grand Theft Auto VI",
-            igdbCoverId = "co7j3d",
+            igdbCoverId = "https://howlongtobeat.com/games/104609_Grand_Theft_Auto_VI.jpg",
             dayMonth = "19/11",
             year = "2026",
             genres = "Ação, Aventura, Mundo Aberto",
@@ -54,7 +54,7 @@ object HltbReferenceCatalog {
         entry(
             id = "ghost_of_yotei",
             title = "Ghost of Yōtei",
-            igdbCoverId = "co8t8m",
+            igdbCoverId = "https://howlongtobeat.com/games/157301_Ghost_of_Ytei.png",
             dayMonth = "02/10",
             year = "2025",
             genres = "Ação, Aventura, Mundo Aberto",
@@ -66,7 +66,7 @@ object HltbReferenceCatalog {
         entry(
             id = "death_stranding_2",
             title = "Death Stranding 2: On the Beach",
-            igdbCoverId = "co7s3r",
+            igdbCoverId = "https://howlongtobeat.com/games/118225_Death_Stranding_2_On_The_Beach.png",
             dayMonth = "26/06",
             year = "2025",
             genres = "Ação, Aventura, Ficção Científica",
@@ -78,10 +78,10 @@ object HltbReferenceCatalog {
         entry(
             id = "phantom_blade_zero",
             title = "Phantom Blade Zero",
-            igdbCoverId = "co6m0z",
+            igdbCoverId = "https://howlongtobeat.com/games/129235_Phantom_Blade_Zero.jpg",
             dayMonth = "15/09",
             year = "2026",
-            genres = "RPG de Ação, Hack and Slash",
+            genres = "RPG, Ação, Hack and Slash",
             platform = "PS5, PC",
             mainHours = 19L,
             extraHours = 40L,
@@ -90,7 +90,7 @@ object HltbReferenceCatalog {
         entry(
             id = "metroid_prime_4",
             title = "Metroid Prime 4: Beyond",
-            igdbCoverId = "co8b9t",
+            igdbCoverId = "https://howlongtobeat.com/games/46437_Metroid_Prime_4_Beyond.jpg",
             dayMonth = "04/12",
             year = "2025",
             genres = "Ação, Aventura, Ficção Científica",
@@ -102,7 +102,7 @@ object HltbReferenceCatalog {
         entry(
             id = "hollow_knight_silksong",
             title = "Hollow Knight: Silksong",
-            igdbCoverId = "co3vtl",
+            igdbCoverId = "https://howlongtobeat.com/games/65945_Hollow_Knight_Silksong.jpg",
             dayMonth = "04/09",
             year = "2025",
             genres = "Metroidvania, Ação, Plataforma",
@@ -114,7 +114,7 @@ object HltbReferenceCatalog {
         entry(
             id = "marvels_wolverine",
             title = "Marvel's Wolverine",
-            igdbCoverId = "co3w4g",
+            igdbCoverId = "https://howlongtobeat.com/games/97761_Marvels_Wolverine.png",
             dayMonth = "15/10",
             year = "2026",
             genres = "Ação, Aventura",
@@ -126,10 +126,10 @@ object HltbReferenceCatalog {
         entry(
             id = "crimson_desert",
             title = "Crimson Desert",
-            igdbCoverId = "co71bc",
+            igdbCoverId = "https://howlongtobeat.com/games/94122_Crimson_Desert.jpg",
             dayMonth = "19/03",
             year = "2026",
-            genres = "RPG de Ação, Mundo Aberto",
+            genres = "RPG, Ação, Mundo Aberto",
             platform = "PC, PS5, Xbox Series X/S",
             mainHours = 71L,
             extraHours = 141L,
@@ -138,10 +138,10 @@ object HltbReferenceCatalog {
         entry(
             id = "the_witcher_4",
             title = "The Witcher IV",
-            igdbCoverId = "co95a1",
+            igdbCoverId = "https://howlongtobeat.com/games/127655_The_Witcher_IV.jpg",
             dayMonth = null,
             year = "2027",
-            genres = "RPG de Ação, Fantasia, Mundo Aberto",
+            genres = "RPG, Ação, Mundo Aberto",
             platform = "PC, PS5, Xbox Series X/S",
             isUnreleased = true
         ),
@@ -526,7 +526,7 @@ object HltbReferenceCatalog {
         if (normQuery.isEmpty()) return emptyList()
         return entries.filter { item ->
             val normTitle = GameMetadataService.normalizeTitle(item.title)
-            normTitle.contains(normQuery) || normQuery.contains(normTitle)
+            normTitle.contains(normQuery)
         }
     }
 
@@ -538,11 +538,10 @@ object HltbReferenceCatalog {
 
     fun findExactOrFuzzy(title: String): RemoteGameMetadata? {
         findExact(title)?.let { return it }
-        val norm = GameMetadataService.normalizeTitle(title)
-        if (norm.isEmpty()) return null
-        return entries.firstOrNull { item ->
-            val candidate = GameMetadataService.normalizeTitle(item.title)
-            candidate.length >= 4 && (candidate.startsWith("$norm ") || norm.startsWith("$candidate "))
+        val cleaned = GameMetadataService.cleanTitleForOnlineSearch(title)
+        if (cleaned != title) {
+            findExact(cleaned)?.let { return it }
         }
+        return null
     }
 }

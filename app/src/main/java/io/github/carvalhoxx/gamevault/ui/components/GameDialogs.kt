@@ -583,20 +583,14 @@ fun GameFormDialog(
             isSearchingOnline = false
             return@LaunchedEffect
         }
-        val instantCatalog = HltbReferenceCatalog.search(clean)
-        if (instantCatalog.isNotEmpty() && searchResults.isEmpty()) {
-            searchResults = instantCatalog
-        }
-        delay(250L)
+        delay(220L)
         isSearchingOnline = true
         try {
             val remote = metadataService.searchGames(clean)
             if (remote.isNotEmpty()) {
                 searchResults = remote
-            } else if (instantCatalog.isNotEmpty()) {
-                searchResults = instantCatalog
             } else {
-                searchResults = emptyList()
+                searchResults = HltbReferenceCatalog.search(clean)
             }
         } finally {
             isSearchingOnline = false
@@ -700,7 +694,7 @@ fun GameFormDialog(
                             .padding(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        searchResults.take(5).forEach { candidate ->
+                        searchResults.take(6).forEach { candidate ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -710,13 +704,8 @@ fun GameFormDialog(
                                         searchResults = emptyList()
                                         applyRemoteMetadata(candidate)
                                         coroutineScope.launch {
-                                            val detailed = metadataService.fetchBestMatchForTitle(
-                                                title = candidate.title,
-                                                existingExternalId = candidate.externalApiId
-                                            )
-                                            if (detailed != null) {
-                                                applyRemoteMetadata(detailed)
-                                            }
+                                            val detailed = metadataService.enrichSelectedCandidate(candidate)
+                                            applyRemoteMetadata(detailed)
                                         }
                                     }
                                     .padding(6.dp),
@@ -739,13 +728,19 @@ fun GameFormDialog(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                    val candidateYear = formatYear(candidate.releaseDateMillis).takeIf { it.isNotBlank() }
                                     val durationLabel = if (candidate.isUnreleased) {
                                         "Inédito • Duração a definir"
                                     } else {
                                         "Campanha: ${TimeFormatUtils.formatHltbReferenceOrTbd(candidate.hltbMainSeconds)}"
                                     }
+                                    val subtitlePrefix = if (candidateYear != null) {
+                                        "$candidateYear • ${candidate.platform}"
+                                    } else {
+                                        candidate.platform
+                                    }
                                     Text(
-                                        text = "${candidate.platform} • $durationLabel",
+                                        text = "$subtitlePrefix • $durationLabel",
                                         style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis

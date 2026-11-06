@@ -48,44 +48,72 @@ class GameMetadataService(
             Triple(igdbDeferred.await(), rawgDeferred.await(), hltbDeferred.await())
         }
 
-        val hltbByNormTitle = hltbMatches.associateBy { normalizeTitle(it.title) }
-
         val merged = mutableListOf<RemoteGameMetadata>()
         val seenKeys = mutableSetOf<String>()
+        val seenTitles = mutableSetOf<String>()
 
-        // 1. Resultados da IGDB e RAWG enriquecidos com tempos do HowLongToBeat
+        // 1. Resultados da IGDB e RAWG enriquecidos apenas com correspondência exata do HowLongToBeat
         for (meta in (igdbMatches + rawgMatches)) {
-            val key = normalizeTitle(meta.title)
-            if (key.isNotEmpty() && seenKeys.add(key)) {
-                val hltb = hltbByNormTitle[key]
-                    ?: hltbMatches.firstOrNull { isSimilarTitle(it.title, meta.title) }
-                    ?: HltbReferenceCatalog.findExactOrFuzzy(meta.title)
+            val normTitle = normalizeTitle(meta.title)
+            val key = dedupKey(meta)
+            if (normTitle.isNotEmpty() && seenKeys.add(key)) {
+                val hltb = findMatchingHltb(meta, hltbMatches)
+                    ?: HltbReferenceCatalog.findExact(meta.title)
                 merged.add(mergeMetadataAndHltb(meta, hltb))
+                seenTitles.add(normTitle)
             }
         }
 
-        // 2. Resultados diretos do HowLongToBeat (possui todas as plataformas, capas, lançamentos futuros e tempos)
+        // 2. Resultados diretos do HowLongToBeat (mantém versões de anos diferentes, ex.: 2005 vs 2023)
         for (hltbItem in hltbMatches) {
-            val key = normalizeTitle(hltbItem.title)
-            if (key.isNotEmpty() && seenKeys.add(key)) {
-                val catalogRef = HltbReferenceCatalog.findExact(hltbItem.title)
+            val normTitle = normalizeTitle(hltbItem.title)
+            val key = dedupKey(hltbItem)
+            if (normTitle.isNotEmpty() && seenKeys.add(key)) {
+                val catalogRef = HltbReferenceCatalog.findExact(hltbItem.title)?.takeIf {
+                    isCompatibleReleaseYear(hltbItem.releaseDateMillis, it.releaseDateMillis)
+                }
                 merged.add(
                     if (catalogRef != null) mergeMetadataAndHltb(hltbItem, catalogRef) else hltbItem
                 )
+                seenTitles.add(normTitle)
             }
         }
 
-        // 3. Catálogo multiplataforma (inclui lançamentos futuros como GTA VI, Ghost of Yōtei, etc.)
+        // 3. Catálogo de referência (apenas se o título ainda não veio da busca online)
         for (cat in catalogMatches) {
-            val key = normalizeTitle(cat.title)
-            if (key.isNotEmpty() && seenKeys.add(key)) {
-                val hltb = hltbByNormTitle[key]
-                merged.add(if (hltb != null) mergeMetadataAndHltb(cat, hltb) else cat)
+            val normTitle = normalizeTitle(cat.title)
+            val key = dedupKey(cat)
+            if (normTitle.isNotEmpty() && normTitle !in seenTitles && seenKeys.add(key)) {
+                merged.add(cat)
             }
         }
 
-        merged.take(10)
+        val normQuery = normalizeTitle(cleanQuery)
+        merged.sortedWith(
+            compareBy<RemoteGameMetadata> {
+                val nt = normalizeTitle(it.title)
+                when {
+                    nt == normQuery -> 0
+                    nt.startsWith(normQuery) -> 1
+                    nt.contains(normQuery) -> 2
+                    else -> 3
+                }
+            }.thenBy { if ((it.hltbMainSeconds ?: 0L) > 0L) 0 else 1 }
+        ).take(10)
     }
+
+    /**
+     * Enriquece diretamente um candidato já selecionado na lista de busca sem refazer toda a busca por texto,
+     * preservando a versão/ano exato escolhido pelo usuário (ex.: Resident Evil 4 de 2005 vs 2023).
+     */
+    suspend fun enrichSelectedCandidate(candidate: RemoteGameMetadata): RemoteGameMetadata =
+        withContext(Dispatchers.IO) {
+            val hltbId = candidate.externalApiId?.takeIf { it.startsWith("hltb:") }?.removePrefix("hltb:")
+            if (!hltbId.isNullOrBlank()) {
+                return@withContext enrichFromHltbGamePage(candidate, hltbId)
+            }
+            fetchBestMatchForTitle(candidate.title, candidate.externalApiId) ?: candidate
+        }
 
     /**
      * Busca a melhor correspondência completa (IGDB/RAWG + página de detalhes do HowLongToBeat)
@@ -98,23 +126,37 @@ class GameMetadataService(
         val cleanTitle = cleanTitleForOnlineSearch(title)
         if (cleanTitle.isEmpty()) return@withContext null
 
+        val wantsRemake = title.contains("remake", ignoreCase = true) ||
+            title.contains("remaster", ignoreCase = true)
+
         val results = searchGames(cleanTitle)
-        val exact = results.firstOrNull {
+        val exactMatches = results.filter {
             (!existingExternalId.isNullOrBlank() && it.externalApiId == existingExternalId) ||
                 normalizeTitle(it.title) == normalizeTitle(cleanTitle) ||
                 normalizeTitle(it.title) == normalizeTitle(title)
+        }
+        val exact = if (wantsRemake && exactMatches.size > 1) {
+            exactMatches.maxByOrNull { it.releaseDateMillis ?: 0L }
+        } else {
+            exactMatches.firstOrNull()
         } ?: results.firstOrNull()
 
-        val hltbHit = results.firstOrNull {
+        val hltbCandidates = results.filter {
             it.externalApiId?.startsWith("hltb:") == true &&
                 normalizeTitle(it.title) == normalizeTitle(cleanTitle)
-        } ?: results.firstOrNull { it.externalApiId?.startsWith("hltb:") == true }
+        }
+        val hltbHit = (if (wantsRemake && hltbCandidates.size > 1) {
+            hltbCandidates.maxByOrNull { it.releaseDateMillis ?: 0L }
+        } else {
+            hltbCandidates.firstOrNull()
+        }) ?: results.firstOrNull { it.externalApiId?.startsWith("hltb:") == true }
             ?: runCatching { searchHowLongToBeat(cleanTitle).firstOrNull() }.getOrNull()
             ?: HltbReferenceCatalog.findExactOrFuzzy(cleanTitle)
             ?: HltbReferenceCatalog.findExactOrFuzzy(title)
 
         val combined = when {
-            exact != null && hltbHit != null && exact.externalApiId != hltbHit.externalApiId ->
+            exact != null && hltbHit != null && exact.externalApiId != hltbHit.externalApiId &&
+                normalizeTitle(exact.title) == normalizeTitle(hltbHit.title) ->
                 mergeMetadataAndHltb(exact, hltbHit)
             exact != null -> exact
             else -> hltbHit
@@ -630,11 +672,34 @@ class GameMetadataService(
                 .trim()
         }
 
-        private fun isSimilarTitle(a: String, b: String): Boolean {
-            val na = normalizeTitle(a)
-            val nb = normalizeTitle(b)
-            if (na.isEmpty() || nb.isEmpty()) return false
-            return na == nb || (na.length >= 4 && nb.length >= 4 && (na.startsWith(nb) || nb.startsWith(na)))
+        private fun extractReleaseYear(millis: Long?): Int? {
+            if (millis == null || millis <= 0L) return null
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
+            return cal.get(Calendar.YEAR)
+        }
+
+        private fun isCompatibleReleaseYear(millisA: Long?, millisB: Long?): Boolean {
+            val yearA = extractReleaseYear(millisA) ?: return true
+            val yearB = extractReleaseYear(millisB) ?: return true
+            return kotlin.math.abs(yearA - yearB) <= 1
+        }
+
+        private fun dedupKey(meta: RemoteGameMetadata): String {
+            val norm = normalizeTitle(meta.title)
+            val year = extractReleaseYear(meta.releaseDateMillis)
+            return if (year != null) "${norm}_$year" else norm
+        }
+
+        private fun findMatchingHltb(
+            meta: RemoteGameMetadata,
+            hltbMatches: List<RemoteGameMetadata>
+        ): RemoteGameMetadata? {
+            val norm = normalizeTitle(meta.title)
+            val sameTitle = hltbMatches.filter { normalizeTitle(it.title) == norm }
+            if (sameTitle.isEmpty()) return null
+            return sameTitle.firstOrNull {
+                isCompatibleReleaseYear(meta.releaseDateMillis, it.releaseDateMillis)
+            } ?: sameTitle.first()
         }
 
         internal fun normalizeGenresPtBr(rawGenres: String): String {
