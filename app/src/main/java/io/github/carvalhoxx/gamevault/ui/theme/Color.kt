@@ -2,23 +2,43 @@ package io.github.carvalhoxx.gamevault.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Paleta Oficial SideQuest / GameVault (ARCHITECTURE.md Seção 2)
-val DeepSlateBackground = Color(0xFF0D0C14)
-val DeepSlateSurface = Color(0xFF151321)
-val DeepSlateCard = Color(0xFF1E1B2E)
-val DeepSlateElevated = Color(0xFF28243D)
+// Paleta Oficial SideQuest — Console UI (Carbon Matte & Ember Orange)
+val CarbonMatteBackground = Color(0xFF121316)
+val CarbonSurface = Color(0xFF1A1C20)
+val CarbonElevated = Color(0xFF1C1F26)
+val CarbonBorderHairline = Color(0xFF1F2229)
+val CarbonBorderSubtle = Color(0xFF282C36)
 
-val NeonPurplePrimary = Color(0xFFB85BFF)
-val NeonPurpleSecondary = Color(0xFF8C3BFF)
-val NeonPurpleGlow = Color(0xFFCF8BFF)
+val EmberOrangePrimary = Color(0xFFFF5A26)
+val EmberOrangeSecondary = Color(0xFFD94315)
+val EmberOrangeGlow = Color(0xFFFF7A4D)
 
-val HallOfFameGold = Color(0xFFF5C451)
-val HallOfFameGoldDark = Color(0xFFC8961E)
+val AmberBrass = Color(0xFFE5A93C)
+val AmberBrassDark = Color(0xFFB87F1E)
 
-val DealEmeraldGreen = Color(0xFF2EE59D)
-val WarningAmber = Color(0xFFFFB020)
-val DangerCrimson = Color(0xFFFF4D6D)
+val SageClear = Color(0xFF78D68C)
+val WarningAmber = Color(0xFFE5A93C)
+val DangerCrimson = Color(0xFFFF4D5E)
 
-val TextPrimary = Color(0xFFF5F3FF)
-val TextSecondary = Color(0xFFA6A0C4)
-val TextMuted = Color(0xFF6E688F)
+val BoneCream = Color(0xFFF3EFE6)
+val AshGrey = Color(0xFF9A9EA7)
+val SlateMuted = Color(0xFF686D78)
+
+// Aliases de compatibilidade para telas legadas
+val DeepSlateBackground = CarbonMatteBackground
+val DeepSlateSurface = CarbonSurface
+val DeepSlateCard = CarbonElevated
+val DeepSlateElevated = CarbonBorderSubtle
+
+val NeonPurplePrimary = EmberOrangePrimary
+val NeonPurpleSecondary = EmberOrangeSecondary
+val NeonPurpleGlow = EmberOrangeGlow
+
+val HallOfFameGold = AmberBrass
+val HallOfFameGoldDark = AmberBrassDark
+
+val DealEmeraldGreen = SageClear
+
+val TextPrimary = BoneCream
+val TextSecondary = AshGrey
+val TextMuted = SlateMuted

@@ -226,10 +226,10 @@ private fun SideQuestBottomBar(
     onSelectTab: (BottomNavTab) -> Unit
 ) {
     Surface(
-        color = DeepSlateSurface,
+        color = Color(0xFF15171C),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, DeepSlateElevated, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .border(1.dp, Color(0xFF1F2229), RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
     ) {
         Row(
             modifier = Modifier
@@ -245,14 +245,14 @@ private fun SideQuestBottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .clickable { onSelectTab(tab) }
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .width(64.dp)
-                            .height(34.dp)
+                            .height(32.dp)
                             .clip(RoundedCornerShape(50))
                             .background(if (isSelected) NeonPurplePrimary else Color.Transparent),
                         contentAlignment = Alignment.Center
@@ -260,7 +260,7 @@ private fun SideQuestBottomBar(
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = tab.label,
-                            tint = if (isSelected) Color(0xFF140526) else TextSecondary,
+                            tint = if (isSelected) DeepSlateBackground else TextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }

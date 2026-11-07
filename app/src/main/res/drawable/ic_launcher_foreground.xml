@@ -1,30 +1,140 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.72"
+        android:scaleY="0.72">
+        <!-- Console Dial Ring -->
+        <path
+            android:pathData="M256,82 C352.098,82 430,159.902 430,256 C430,352.098 352.098,430 256,430 C159.902,430 82,352.098 82,256 C82,159.902 159.902,82 256,82 Z"
+            android:strokeColor="#282C36"
+            android:strokeWidth="3" />
+
+        <!-- Crest Outer Rim -->
+        <path android:pathData="M256,60 L404,166 L404,326 L256,452 L108,326 L108,166 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="167"
+                    android:startY="60"
+                    android:endX="345"
+                    android:endY="452">
+                    <item
+                        android:offset="0"
+                        android:color="#FF7A4D" />
+                    <item
+                        android:offset="0.5"
+                        android:color="#FF5A26" />
+                    <item
+                        android:offset="1"
+                        android:color="#E5A93C" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Crest Carbon Core -->
+        <path android:pathData="M256,82 L386,175 L386,317 L256,430 L126,317 L126,175 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="256"
+                    android:startY="82"
+                    android:endX="256"
+                    android:endY="430">
+                    <item
+                        android:offset="0"
+                        android:color="#1C1F26" />
+                    <item
+                        android:offset="1"
+                        android:color="#101114" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:pathData="M256,82 L386,175 L386,317 L256,430 L126,317 L126,175 Z"
+            android:strokeColor="#2E333E"
+            android:strokeWidth="2" />
+
+        <!-- SideQuest Wing Left -->
+        <path android:pathData="M148,242 L242,164 L242,206 L182,256 L242,306 L242,348 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="148"
+                    android:startY="164"
+                    android:endX="242"
+                    android:endY="348">
+                    <item
+                        android:offset="0"
+                        android:color="#FF7A4D" />
+                    <item
+                        android:offset="1"
+                        android:color="#FF5A26" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- SideQuest Wing Right -->
+        <path android:pathData="M364,242 L270,164 L270,206 L330,256 L270,306 L270,348 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="270"
+                    android:startY="164"
+                    android:endX="364"
+                    android:endY="348">
+                    <item
+                        android:offset="0"
+                        android:color="#FF7A4D" />
+                    <item
+                        android:offset="1"
+                        android:color="#E5A93C" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Platinum GOTY Star (4-point beacon) -->
+        <path android:pathData="M256,170 L271.1,230.9 L332,246 L271.1,261.1 L256,322 L240.9,261.1 L180,246 L240.9,230.9 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="225"
+                    android:startY="170"
+                    android:endX="286"
+                    android:endY="322">
+                    <item
+                        android:offset="0"
+                        android:color="#F3EFE6" />
+                    <item
+                        android:offset="0.45"
+                        android:color="#FFE09E" />
+                    <item
+                        android:offset="1"
+                        android:color="#E5A93C" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Core Diamond Pip -->
+        <path
+            android:pathData="M256,233.3 L268.7,246 L256,258.7 L243.3,246 Z"
+            android:fillColor="#FF5A26" />
+
+        <!-- Crown Pip -->
+        <path
+            android:pathData="M256,120 L270,134 L256,148 L242,134 Z"
+            android:fillColor="#E5A93C" />
+
+        <!-- Base Pip -->
+        <path
+            android:pathData="M256,366 L266,376 L256,386 L246,376 Z"
+            android:fillColor="#78D68C" />
+    </group>
 </vector>

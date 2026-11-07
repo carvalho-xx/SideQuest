@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Crest Outer Rim -->
+    <path android:pathData="M256,40 L420,158 L420,336 L256,472 L92,336 L92,158 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="158"
+                android:startY="40"
+                android:endX="354"
+                android:endY="472">
+                <item
+                    android:offset="0"
+                    android:color="#FF7A4D" />
+                <item
+                    android:offset="0.5"
+                    android:color="#FF5A26" />
+                <item
+                    android:offset="1"
+                    android:color="#E5A93C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Crest Carbon Core -->
+    <path android:pathData="M256,66 L398,168 L398,324 L256,446 L114,324 L114,168 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="256"
+                android:startY="66"
+                android:endX="256"
+                android:endY="446">
+                <item
+                    android:offset="0"
+                    android:color="#1C1F26" />
+                <item
+                    android:offset="1"
+                    android:color="#101114" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- SideQuest Wing Left -->
+    <path android:pathData="M140,242 L240,158 L240,202 L176,256 L240,310 L240,354 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="140"
+                android:startY="158"
+                android:endX="240"
+                android:endY="354">
+                <item
+                    android:offset="0"
+                    android:color="#FF7A4D" />
+                <item
+                    android:offset="1"
+                    android:color="#FF5A26" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- SideQuest Wing Right -->
+    <path android:pathData="M372,242 L272,158 L272,202 L336,256 L272,310 L272,354 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="272"
+                android:startY="158"
+                android:endX="372"
+                android:endY="354">
+                <item
+                    android:offset="0"
+                    android:color="#FF7A4D" />
+                <item
+                    android:offset="1"
+                    android:color="#E5A93C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Platinum GOTY Star -->
+    <path android:pathData="M256,162 L273,229 L340,246 L273,263 L256,330 L239,263 L172,246 L239,229 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="220"
+                android:startY="162"
+                android:endX="292"
+                android:endY="330">
+                <item
+                    android:offset="0"
+                    android:color="#F3EFE6" />
+                <item
+                    android:offset="0.45"
+                    android:color="#FFE09E" />
+                <item
+                    android:offset="1"
+                    android:color="#E5A93C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Core Diamond Pip -->
+    <path
+        android:pathData="M256,232 L270,246 L256,260 L242,246 Z"
+        android:fillColor="#FF5A26" />
+
+    <!-- Crown Pip -->
+    <path
+        android:pathData="M256,110 L270,124 L256,138 L242,124 Z"
+        android:fillColor="#E5A93C" />
+
+    <!-- Base Pip -->
+    <path
+        android:pathData="M256,374 L268,386 L256,398 L244,386 Z"
+        android:fillColor="#78D68C" />
+</vector>

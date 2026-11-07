@@ -95,11 +95,11 @@ fun GameCoverArtwork(
 ) {
     val hash = abs(title.hashCode())
     val palette = listOf(
-        listOf(Color(0xFF3A1C71), Color(0xFFD76D77), Color(0xFFFFAF7B)),
-        listOf(Color(0xFF1F1C2C), Color(0xFF6A3093), Color(0xFFA044FF)),
-        listOf(Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)),
-        listOf(Color(0xFF23074D), Color(0xFFCC5333), Color(0xFFF5C451)),
-        listOf(Color(0xFF141E30), Color(0xFF243B55), Color(0xFFB85BFF))
+        listOf(Color(0xFFFF5A26), Color(0xFF9E2B10), Color(0xFF261410)),
+        listOf(Color(0xFF262B38), Color(0xFF1A1E29), Color(0xFF121316)),
+        listOf(Color(0xFFE5A93C), Color(0xFF6B4710), Color(0xFF1A150E)),
+        listOf(Color(0xFF8F2D19), Color(0xFF3D1710), Color(0xFF141110)),
+        listOf(Color(0xFF24342B), Color(0xFF18221D), Color(0xFF121514))
     )
     val colors = palette[hash % palette.size]
     val initials = title.split(" ")

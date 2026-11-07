@@ -31,7 +31,7 @@ Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do
 
 | Nome do Arquivo na pasta `design_refs/` | Tela Correspondente no App (Jetpack Compose) | Descrição dos Componentes Visuais |
 | :--- | :--- | :--- |
-| **`01_dashboard_home.png`** | `DashboardScreen.kt` | Card Hero "Jogando Agora" com Cronômetro (`HH:MM:SS`), comparador flexível com HLTB (sem barra que quebra se passar de 100%), carrossel *Radar de Lançamentos*, galeria dourada *Hall da Fama (11/10)* (exibindo citação apenas se houver `coreMemoryNote` preenchida, sem texto padrão) e card de *Jogo do Ano Pessoal*. |
+| **`01_dashboard_home.png`** | `DashboardScreen.kt` | Cabeçalho com atalho para **Perfil do Usuário** (onde configura dados básicos e Meta Anual de jogos zerados) e botão `+`, faixa de resumo (Meta Anual de Zerados e Jogos na Fila, **sem** contador de Hall 11/10), Card Hero "Jogando Agora" com Cronômetro (`HH:MM:SS`) e comparador flexível com HLTB, e carrossel **Radar de Lançamentos** (exibindo apenas os próximos lançamentos aguardados pelo usuário com data e contagem regressiva; o cálculo de terminar um jogo antes de outro fica exclusivamente na **Agenda**). O **Hall da Fama** foi removido da tela inicial. |
 | **`02_library_backlog.png`** | `LibraryScreen.kt` | Lista da Biblioteca com busca, botão `+` de adicionar jogo no topo ao lado do botão de filtros, painel expansível de filtros (com opção *Limpar filtros*), abas de status em português (*Todos, Jogando, Na Fila, Lançamento, Zerados, Abandonados, Pausados*) e botão da *Roleta da Fila*. |
 | **`03_game_details_rating11.png`** | `GameDetailScreen.kt` | Cabeçalho com ícones vetoriais padronizados (Voltar, Editar, Excluir), pílulas de referência HLTB, controle de tempo exato (`HH:MM:SS`), Seletor de Nota de `0` a `10` em grade de 2 linhas + linha dedicada de precisão decimal + Botão Dourado **`11/10 • Jogo da Vida`**, menu colapsável de *Memória Afetiva* (que expande ao toque revelando texto, chave *Jogo do Ano Pessoal* e botão *Salvar Memória*) e botão *Marcar como Zerado* (visível apenas enquanto o jogo não estiver `COMPLETED`). |
 | **`04_day_one_planner.png`** | `PlannerScreen.kt` | Configurador de ritmo (`h/dia`), linha do tempo comparando o jogo atual com lançamentos *Day One*, estado de **"Agenda Dedicada / HLTB Pendente (TBD)"** (para jogos não lançados como GTA VI) e sugestões de *Gap Filler*. |
@@ -103,14 +103,21 @@ Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do
     3. Se ambos forem `null` (padrão para lançamentos inéditos), o jogo entra no estado **`DURATION_TBD_LOCK` (Agenda Dedicada / Duração Indefinida)**.
   * **Efeito Visual do `DURATION_TBD_LOCK` no Planner:** A partir do dia 19 (lançamento do GTA VI), o calendário mostra um bloco especial: *"🔒 Agenda Dedicada: GTA VI (Sem previsão de término — Aguardando dados de duração)"*. Se o usuário quiser planejar jogos *depois* do GTA VI, um botão rápido *"Definir estimativa provisória (ex: 50h)"* fica disponível no próprio card.
 
-### 5.3. Sistema de Nota 0 a 11 ("Jogo da Vida" / Hall da Fama) e Desempate de GOTY
-* Notas vão de `0.0` a `10.0` (com seletor em grade de 2 linhas `0..5` e `6..10` e ajuste fino decimal `.0`, `.25`, `.5`, `.75`) + nível especial **`11.0` (Hall da Fama / Jogo da Vida)**.
-* **Memória Afetiva (`coreMemoryNote`) Opcional e Colapsável:** Na tela de detalhes do jogo, a seção de Memória Afetiva funciona como um menu colapsável (fechado por padrão, expandindo ao toque). Se o usuário avaliar um jogo com nota `11.0` ou marcá-lo como Jogo do Ano Pessoal **sem** preencher a memória afetiva, o Dashboard **não deve exibir nenhuma mensagem padrão inventada** — mostra apenas os dados reais do jogo.
-* **Desempate de GOTY:** Na retrospectiva do ano, se 2 ou mais jogos empatarem com a maior nota (ex: dois jogos nota 11 ou dois jogos nota 10 no mesmo ano), o app habilita o card **"Confronto GOTY [Ano]"** para o usuário escolher manualmente qual leva o troféu.
+### 5.3. Sistema de Nota 0 a 11 ("Jogo da Vida") e Aba Futura de GOTYs por Ano de Conclusão
+* Notas vão de `0.0` a `10.0` (com seletor em grade de 2 linhas `0..5` e `6..10` e ajuste fino decimal `.0`, `.25`, `.5`, `.75`) + nível especial **`11.0` (Jogo da Vida)**.
+* **Remoção do Hall da Fama da Tela Inicial:** O Dashboard (`Início`) **não** exibe mais a seção de *Hall da Fama (11/10)* nem contador de jogos nota 11 no topo, mantendo o foco da tela inicial em sessão ativa, progresso no ano e próximos lançamentos.
+* **Memória Afetiva (`coreMemoryNote`) Opcional e Colapsável:** Na tela de detalhes do jogo, a seção de Memória Afetiva funciona como um menu colapsável (fechado por padrão, expandindo ao toque).
+* **Aba de GOTYs por Ano de Conclusão (Feature Futura):** Em vez de um card solto de Hall da Fama na Home, o aplicativo terá uma aba/seção dedicada de **GOTYs Pessoais**, organizada pelo **ano em que o usuário zerou o jogo** (`completionDate`), e **não** pelo ano de lançamento original. Exemplo: se o usuário zerou *The Legend of Zelda: Ocarina of Time* em **2024**, ele pode elegê-lo como seu **GOTY de 2024** mesmo o jogo tendo sido lançado em 1998. Se 2 ou mais jogos zerados no mesmo ano empatarem na disputa, o modal de **Desempate de GOTY [Ano]** permite escolher o campeão daquele ano.
 
 ### 5.4. Roleta da Fila e Preservação de Aba na Navegação
 * **Roleta da Fila (`spinBacklogRoulette`):** Sorteia exclusivamente jogos com status `GameStatus.BACKLOG` (ponderados por `PriorityTier`: Nível S = peso 4, A = 3, B = 2, C = 1). Caso não exista nenhum jogo na fila, a roleta **nunca** deve sortear jogos já zerados (`COMPLETED`) ou de outros status, exibindo um aviso ao usuário.
 * **Destaque da Barra Inferior (`SideQuestNavGraph`):** Ao abrir os detalhes de um jogo (`game_details/{gameId}`), a barra de navegação inferior deve manter destacada a aba de origem (`Início` ou `Biblioteca`), e tocar na aba ativa retorna imediatamente da tela de detalhes para a listagem.
+
+### 5.5. Perfil do Usuário e Meta Anual de Jogos Zerados (Feature Futura)
+* **Tela de Perfil do Usuário:** Acessível pelo ícone de perfil no cabeçalho da tela inicial (`DashboardScreen`), permitirá ao usuário configurar suas informações básicas:
+  * Nome / apelido e avatar.
+  * **Meta Anual de Jogos Zerados** (ex: `20 jogos no ano`), que alimenta o indicador de progresso anual exibido no topo da tela inicial.
+  * Plataformas principais do usuário e ritmo diário padrão de jogo (`h/dia`) usado na Agenda.
 
 ---
 
@@ -120,5 +127,5 @@ Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do
 * **Fase 2: UI Principal, Cronômetro de Sessão e Biblioteca** (Guiado pelas imagens `01_dashboard_home.png`, `02_library_backlog.png` e `03_game_details_rating11.png`).
 * **Fase 3: Integração com API de Jogos e Tempos** (Busca automática de capas, datas de lançamento e referências de tempo).
 * **Fase 4: Motor do Cronograma e Tratamento de Day One Nullables** (Guiado pela imagem `04_day_one_planner.png`).
-* **Fase 5: Hall da Fama Nota 11, Estatísticas e Desempate GOTY** (Guiado pelas imagens `01_dashboard_home.png` e `05_wishlist_and_goty_tiebreaker.png`).
+* **Fase 5: Aba de GOTYs por Ano de Conclusão, Perfil do Usuário (Meta Anual) e Desempate GOTY** (Guiado por `05_wishlist_and_goty_tiebreaker.png`).
 * **Fase 6: Radar de Promoções da Wishlist com WorkManager** (Guiado pela imagem `05_wishlist_and_goty_tiebreaker.png`).
