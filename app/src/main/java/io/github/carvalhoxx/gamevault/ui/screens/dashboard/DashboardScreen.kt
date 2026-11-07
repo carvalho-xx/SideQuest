@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,13 +62,11 @@ import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderHairline
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderSubtle
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonElevated
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonMatteBackground
+import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangeGlow
 import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangePrimary
 import io.github.carvalhoxx.gamevault.ui.theme.SageClear
 import io.github.carvalhoxx.gamevault.ui.theme.SlateMuted
 import io.github.carvalhoxx.gamevault.ui.viewmodel.DashboardUiState
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -84,12 +83,18 @@ fun DashboardScreen(
     var manualTimeTargetGame by remember { mutableStateOf<GameEntity?>(null) }
     var showAddGameDialog by remember { mutableStateOf(false) }
 
-    val currentYear = remember(uiState.nowMillis) {
-        Calendar.getInstance().apply { timeInMillis = uiState.nowMillis }.get(Calendar.YEAR)
-    }
+    val currentYear = uiState.currentYear
 
-    val completedCount = remember(uiState.allGames) {
-        uiState.allGames.count { it.status == GameStatus.COMPLETED }
+    // Filtra estritamente os jogos zerados no ano vigente (completionDate dentro de currentYear)
+    val completedThisYearCount = remember(uiState.completedThisYearGames, uiState.allGames, currentYear) {
+        if (uiState.completedThisYearGames.isNotEmpty()) {
+            uiState.completedThisYearGames.size
+        } else {
+            uiState.allGames.count { game ->
+                game.status == GameStatus.COMPLETED &&
+                    TimeFormatUtils.isTimestampInYear(game.completionDate, currentYear)
+            }
+        }
     }
 
     val backlogCount = remember(uiState.allGames) {
@@ -126,7 +131,7 @@ fun DashboardScreen(
         item {
             Spacer(modifier = Modifier.height(24.dp))
             UnboxedGoalsAndQueueStrip(
-                completedCount = completedCount,
+                completedCount = completedThisYearCount,
                 annualGoal = 20,
                 currentYear = currentYear,
                 backlogCount = backlogCount,
@@ -217,27 +222,29 @@ private fun ConsoleTopBar(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_sidequest_logo),
                 contentDescription = "SideQuest Logo",
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(44.dp)
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "SIDE",
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         color = BoneCream,
                         fontWeight = FontWeight.Black,
+                        fontSize = 22.sp,
                         letterSpacing = 1.sp
                     )
                 )
                 Text(
                     text = "QUEST",
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         color = EmberOrangePrimary,
                         fontWeight = FontWeight.Black,
+                        fontSize = 22.sp,
                         letterSpacing = 1.sp
                     )
                 )
@@ -250,7 +257,7 @@ private fun ConsoleTopBar(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(CarbonElevated)
                     .border(1.dp, CarbonBorderSubtle, CircleShape),
@@ -268,7 +275,7 @@ private fun ConsoleTopBar(
             IconButton(
                 onClick = onAddGameClick,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(CarbonElevated)
                     .border(1.dp, EmberOrangePrimary.copy(alpha = 0.7f), CircleShape)
@@ -277,7 +284,7 @@ private fun ConsoleTopBar(
                     imageVector = AppIcons.Add,
                     contentDescription = "Adicionar jogo",
                     tint = BoneCream,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -711,7 +718,9 @@ private fun UnboxedGoalsAndQueueStrip(
                     style = MaterialTheme.typography.labelLarge.copy(
                         color = EmberOrangePrimary,
                         fontWeight = FontWeight.Bold
-                    )
+                    ),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
@@ -735,18 +744,25 @@ private fun ConsoleSectionHeader(
             style = MaterialTheme.typography.titleLarge.copy(
                 color = BoneCream,
                 fontWeight = FontWeight.ExtraBold
-            )
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
         )
         Text(
             text = actionText,
             style = MaterialTheme.typography.labelLarge.copy(
                 color = EmberOrangePrimary,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold
             ),
+            maxLines = 1,
+            softWrap = false,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onActionClick)
-                .padding(horizontal = 6.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
@@ -757,19 +773,12 @@ private fun UpcomingReleasePosterItem(
     nowMillis: Long,
     onClick: () -> Unit
 ) {
-    val badgeText = remember(game.releaseDate, nowMillis) {
-        val release = game.releaseDate
-        if (release == null || release <= 0L) {
-            "DATA A DEFINIR"
-        } else {
-            val dateStr = SimpleDateFormat("dd MMM", Locale.forLanguageTag("pt-BR"))
-                .format(Date(release))
-                .uppercase()
-                .replace(".", "")
-            val diffMillis = (release - nowMillis).coerceAtLeast(0L)
-            val days = diffMillis / (1000L * 60L * 60L * 24L)
-            "$dateStr • ${days}d"
-        }
+    val release = game.releaseDate
+    val isUnder24Hours = release != null && release > nowMillis &&
+        (release - nowMillis) < (24L * 60L * 60L * 1000L)
+
+    val badgeText = remember(release, nowMillis) {
+        TimeFormatUtils.formatReleaseCountdownBadge(release, nowMillis)
     }
 
     val durationHumanText = when (val res = game.resolveDuration()) {
@@ -849,9 +858,13 @@ private fun UpcomingReleasePosterItem(
                 }
             }
 
-            // Badge superior de data/contagem
+            // Badge superior de data/contagem regressiva (destaca em laranja quando faltar < 24h)
             Surface(
-                color = CarbonMatteBackground.copy(alpha = 0.86f),
+                color = if (isUnder24Hours) {
+                    EmberOrangePrimary.copy(alpha = 0.94f)
+                } else {
+                    CarbonMatteBackground.copy(alpha = 0.88f)
+                },
                 shape = RoundedCornerShape(6.dp),
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -860,10 +873,13 @@ private fun UpcomingReleasePosterItem(
                 Text(
                     text = badgeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = BoneCream,
-                        fontWeight = FontWeight.Bold,
+                        color = if (isUnder24Hours) CarbonMatteBackground else BoneCream,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = if (isUnder24Hours) FontFamily.Monospace else FontFamily.Default,
                         fontSize = 10.sp
                     ),
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }

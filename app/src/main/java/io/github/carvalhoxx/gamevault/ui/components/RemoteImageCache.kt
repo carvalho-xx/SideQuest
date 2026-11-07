@@ -1,7 +1,9 @@
 package io.github.carvalhoxx.gamevault.ui.components
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color as AndroidColor
 import android.util.LruCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +20,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import kotlin.math.abs
 
 object RemoteImageCache {
 
@@ -38,7 +41,9 @@ object RemoteImageCache {
 
         if (cacheFile.exists() && cacheFile.length() > 0L) {
             val diskBitmap = runCatching {
-                BitmapFactory.decodeFile(cacheFile.absolutePath)?.asImageBitmap()
+                BitmapFactory.decodeFile(cacheFile.absolutePath)
+                    ?.let(::trimLetterboxBorders)
+                    ?.asImageBitmap()
             }.getOrNull()
             if (diskBitmap != null) {
                 synchronized(memoryCache) { memoryCache.put(cleanUrl, diskBitmap) }
@@ -48,7 +53,9 @@ object RemoteImageCache {
 
         val bytes = fetchBytes(cleanUrl) ?: return@withContext null
         val decoded = runCatching {
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?.let(::trimLetterboxBorders)
+                ?.asImageBitmap()
         }.getOrNull() ?: return@withContext null
 
         runCatching {
@@ -58,6 +65,59 @@ object RemoteImageCache {
             memoryCache.put(cleanUrl, decoded)
         }
         decoded
+    }
+
+    /**
+     * Remove faixas sólidas de letterbox/pillarbox embutidas na própria imagem
+     * (ex.: capas do HLTB/RAWG que vêm em canvas 2:3 com barras sólidas em cima e embaixo),
+     * permitindo que o ContentScale.Crop preencha 100% da área reservada no Compose.
+     */
+    internal fun trimLetterboxBorders(source: Bitmap): Bitmap {
+        val w = source.width
+        val h = source.height
+        if (w < 32 || h < 32) return source
+
+        fun isUniformBorderRow(y: Int, refPixel: Int): Boolean {
+            val refR = AndroidColor.red(refPixel)
+            val refG = AndroidColor.green(refPixel)
+            val refB = AndroidColor.blue(refPixel)
+            val step = (w / 16).coerceAtLeast(1)
+            var x = 0
+            while (x < w) {
+                val px = source.getPixel(x, y)
+                if (abs(AndroidColor.red(px) - refR) > 14 ||
+                    abs(AndroidColor.green(px) - refG) > 14 ||
+                    abs(AndroidColor.blue(px) - refB) > 14
+                ) {
+                    return false
+                }
+                x += step
+            }
+            return true
+        }
+
+        val topRef = source.getPixel(w / 2, 0)
+        var topInset = 0
+        val maxTrim = (h * 0.35f).toInt()
+        while (topInset < maxTrim && isUniformBorderRow(topInset, topRef)) {
+            topInset++
+        }
+
+        val bottomRef = source.getPixel(w / 2, h - 1)
+        var bottomInset = 0
+        while (bottomInset < maxTrim && isUniformBorderRow(h - 1 - bottomInset, bottomRef)) {
+            bottomInset++
+        }
+
+        // Só recorta quando houver faixas de letterbox claras (> 12px) em cima e embaixo
+        if (topInset < 12 && bottomInset < 12) return source
+
+        val newHeight = h - topInset - bottomInset
+        if (newHeight < h * 0.3f) return source
+
+        return runCatching {
+            Bitmap.createBitmap(source, 0, topInset, w, newHeight)
+        }.getOrDefault(source)
     }
 
     private fun fetchBytes(urlStr: String): ByteArray? {

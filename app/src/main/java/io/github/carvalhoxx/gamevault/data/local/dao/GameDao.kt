@@ -31,6 +31,18 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE status = 'DAY_ONE' ORDER BY CASE WHEN releaseDate IS NULL THEN 1 ELSE 0 END, releaseDate ASC")
     fun observeDayOneGames(): Flow<List<GameEntity>>
 
+    @Query(
+        "SELECT * FROM games " +
+            "WHERE status = 'COMPLETED' " +
+            "AND completionDate IS NOT NULL " +
+            "AND completionDate BETWEEN :startOfYearMillis AND :endOfYearMillis " +
+            "ORDER BY completionDate DESC"
+    )
+    fun observeCompletedGamesInDateRange(
+        startOfYearMillis: Long,
+        endOfYearMillis: Long
+    ): Flow<List<GameEntity>>
+
     @Query("SELECT * FROM games WHERE isHallOfFame = 1 OR personalRating >= 11.0 ORDER BY completionDate DESC, title ASC")
     fun observeHallOfFameGames(): Flow<List<GameEntity>>
 

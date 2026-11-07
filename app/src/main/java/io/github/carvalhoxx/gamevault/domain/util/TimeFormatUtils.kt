@@ -96,4 +96,72 @@ object TimeFormatUtils {
             formatter.format(Date(timestampMillis))
         }.getOrDefault("A definir")
     }
+
+    /**
+     * Retorna os limites [inícioDoAnoMillis, fimDoAnoMillis] em UTC para filtrar
+     * jogos zerados no ano vigente com segurança contra desvios de fuso horário.
+     */
+    fun getUtcYearBoundsMillis(year: Int): Pair<Long, Long> {
+        val startCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, Calendar.JANUARY)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, Calendar.DECEMBER)
+            set(Calendar.DAY_OF_MONTH, 31)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        return startCal.timeInMillis to endCal.timeInMillis
+    }
+
+    /**
+     * Verifica se o timestamp (completionDate) pertence ao ano especificado (tanto em UTC quanto no fuso local).
+     */
+    fun isTimestampInYear(timestampMillis: Long?, targetYear: Int): Boolean {
+        if (timestampMillis == null || timestampMillis <= 0L) return false
+        val utcYear = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            timeInMillis = timestampMillis
+        }.get(Calendar.YEAR)
+        if (utcYear == targetYear) return true
+
+        val localYear = Calendar.getInstance().apply {
+            timeInMillis = timestampMillis
+        }.get(Calendar.YEAR)
+        return localYear == targetYear
+    }
+
+    /**
+     * Formata a contagem regressiva de lançamentos:
+     * - Quando faltar >= 24h: exibe a data + dias restantes (ex: "19 NOV • 12d").
+     * - Quando faltar < 24h (e > 0s): exibe o contador regressivo em tempo real HH:MM:SS (ex: "⏱ 14:22:09").
+     * - Quando já tiver atingido o horário: exibe "DISPONÍVEL AGORA".
+     */
+    fun formatReleaseCountdownBadge(releaseMillis: Long?, nowMillis: Long): String {
+        if (releaseMillis == null || releaseMillis <= 0L) return "DATA A DEFINIR"
+        val diffMillis = releaseMillis - nowMillis
+        if (diffMillis <= 0L) return "DISPONÍVEL AGORA"
+
+        val oneDayMillis = 24L * 60L * 60L * 1000L
+        return if (diffMillis < oneDayMillis) {
+            val totalSeconds = (diffMillis / 1000L).coerceAtLeast(0L)
+            "⏱ ${formatSecondsToHhMmSs(totalSeconds)}"
+        } else {
+            val dateStr = SimpleDateFormat("dd MMM", Locale.forLanguageTag("pt-BR")).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date(releaseMillis)).uppercase().replace(".", "")
+            val days = diffMillis / oneDayMillis
+            "$dateStr • ${days}d"
+        }
+    }
 }

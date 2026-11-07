@@ -10,6 +10,7 @@ import io.github.carvalhoxx.gamevault.data.repository.GameRepository
 import io.github.carvalhoxx.gamevault.domain.model.CompletionStyle
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
+import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class LibraryFilterState(
     val searchQuery: String = "",
@@ -34,6 +36,8 @@ data class DashboardUiState(
     val hallOfFameGames: List<GameEntity> = emptyList(),
     val personalGotyGames: List<GameEntity> = emptyList(),
     val wishlistGames: List<GameEntity> = emptyList(),
+    val completedThisYearGames: List<GameEntity> = emptyList(),
+    val currentYear: Int = Calendar.getInstance().get(Calendar.YEAR),
     val nowMillis: Long = System.currentTimeMillis(),
     val statusMessage: String? = null
 )
@@ -79,7 +83,16 @@ class GameVaultViewModel(
             wishlistGames = all.filter { it.status == GameStatus.WISHLIST || !it.isOwned }
         )
     }.combine(_nowMillis) { state, now ->
-        state.copy(nowMillis = now)
+        val yearNow = Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.YEAR)
+        val completedInCurrentYear = state.allGames.filter { game ->
+            game.status == GameStatus.COMPLETED &&
+                TimeFormatUtils.isTimestampInYear(game.completionDate, yearNow)
+        }
+        state.copy(
+            nowMillis = now,
+            currentYear = yearNow,
+            completedThisYearGames = completedInCurrentYear
+        )
     }.combine(_statusMessage) { state, msg ->
         state.copy(statusMessage = msg)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())

@@ -33,6 +33,12 @@ class GameRepository(
 
     fun observeDayOneGames(): Flow<List<GameEntity>> = gameDao.observeDayOneGames()
 
+    fun observeCompletedGamesInYear(
+        startOfYearMillis: Long,
+        endOfYearMillis: Long
+    ): Flow<List<GameEntity>> =
+        gameDao.observeCompletedGamesInDateRange(startOfYearMillis, endOfYearMillis)
+
     fun observeHallOfFameGames(): Flow<List<GameEntity>> = gameDao.observeHallOfFameGames()
 
     fun observePersonalGotyGames(): Flow<List<GameEntity>> = gameDao.observePersonalGotyGames()

@@ -123,7 +123,10 @@ fun GameCoverArtwork(
                 bitmap = remoteBitmap,
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(cornerRadius))
             )
         } else {
             Column(
