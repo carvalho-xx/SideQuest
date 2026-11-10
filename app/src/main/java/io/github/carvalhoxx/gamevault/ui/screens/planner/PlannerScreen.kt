@@ -1,32 +1,47 @@
 package io.github.carvalhoxx.gamevault.ui.screens.planner
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.theme.AmberBrass
 import io.github.carvalhoxx.gamevault.ui.theme.AshGrey
+import io.github.carvalhoxx.gamevault.ui.theme.BoneCream
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderHairline
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderSubtle
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonMatteBackground
@@ -34,85 +49,65 @@ import io.github.carvalhoxx.gamevault.ui.theme.CarbonSurface
 import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangeGlow
 import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangePrimary
 import io.github.carvalhoxx.gamevault.ui.theme.SageClear
-import io.github.carvalhoxx.gamevault.ui.theme.BoneCream
 import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerEvent
+import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerReleaseUi
+import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerSuggestionUi
 import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlannerScreen(
-    uiState: PlannerUiState,
-    onEvent: (PlannerEvent) -> Unit
-) {
+fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -> Unit) {
+    var gapAberta by remember { mutableStateOf(false) }
+    val gapFillers = (uiState as? PlannerUiState.Ready)?.sugestoes.orEmpty()
+
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(CarbonMatteBackground),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 20.dp,
-            top = 20.dp,
-            end = 20.dp,
-            bottom = 24.dp
-        ),
+        modifier = Modifier.fillMaxSize().background(CarbonMatteBackground),
+        contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Agenda & Day One",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        color = BoneCream,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Agenda", style = MaterialTheme.typography.headlineSmall.copy(color = BoneCream, fontWeight = FontWeight.ExtraBold))
                 Surface(
-                    onClick = { onEvent(PlannerEvent.AbrirRitmoGlobal) },
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF1C1F26),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        EmberOrangePrimary.copy(alpha = .5f)
-                    )
+                    onClick = { onEvent(PlannerEvent.AbrirRitmoGlobal) }, shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF1C1F26), border = BorderStroke(1.dp, EmberOrangePrimary.copy(alpha = .5f))
                 ) {
-                    Text(
-                        text = "Ritmo: ${uiState.ritmoOuPadrao()}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                        color = EmberOrangeGlow,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Text("Ritmo: ${uiState.ritmoOuPadrao()}", Modifier.padding(horizontal = 12.dp, vertical = 9.dp), color = EmberOrangeGlow, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                 }
             }
         }
-        item {
-            Text(
-                text = "Cálculo de conflito entre seu foco atual e lançamentos Day One",
-                color = AshGrey,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
+        item { Text("Planeje seu foco atual entre as próximas estreias.", color = AshGrey, style = MaterialTheme.typography.bodySmall) }
         when (uiState) {
             PlannerUiState.Idle -> item { MessageCard("Nenhum jogo em foco para planejar.") }
             PlannerUiState.Loading -> item { MessageCard("Calculando sua agenda...") }
             is PlannerUiState.Ready -> {
                 item { ConflictCard(uiState) }
-                uiState.proximoLancamento?.let { release ->
-                    item { ReleaseCard(release.titulo, release.dataLancamento, release.contagemRegressiva) }
-                }
+                if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
                 uiState.avisoSobreposicao?.let { item { MessageCard(it, SageClear) } }
-                if (uiState.sugestoes.isNotEmpty()) {
-                    item { SuggestionsCard(uiState.sugestoes) }
-                }
+                if (uiState.sugestoes.isNotEmpty()) item { GapFillersCard(uiState.sugestoes) { gapAberta = true } }
             }
             is PlannerUiState.AgendaDedicadaTbd -> {
-                item { DedicatedAgendaCard(uiState, onEvent) }
+                item { DedicatedAgendaCard(uiState) }
+                if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
+            }
+        }
+    }
+
+    if (gapAberta && gapFillers.isNotEmpty()) {
+        ModalBottomSheet(
+            onDismissRequest = { gapAberta = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = CarbonSurface
+        ) {
+            GapFillersSheet(gapFillers) { id ->
+                onEvent(PlannerEvent.IniciarJornada(id))
+                gapAberta = false
             }
         }
     }
 }
 
-private fun PlannerUiState.ritmoOuPadrao(): String = when (this) {
+private fun PlannerUiState.ritmoOuPadrao() = when (this) {
     is PlannerUiState.Ready -> ritmoDiario
     is PlannerUiState.AgendaDedicadaTbd -> ritmoDiario
     else -> "—"
@@ -123,91 +118,83 @@ private fun ConflictCard(state: PlannerUiState.Ready) {
     PlannerCard {
         SectionLabel("CRONOGRAMA ATÉ A PRÓXIMA ESTREIA")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoBox("JOGANDO AGORA (FOCO)", state.jogoAtual.titulo, "Restam ${state.tempoRestante}", EmberOrangeGlow, Modifier.weight(1f))
-            state.proximoLancamento?.let {
-                InfoBox("ESTREIA DAY ONE", it.titulo, "${it.dataLancamento} • ${it.contagemRegressiva}", AmberBrass, Modifier.weight(1f))
+            InfoBox("JOGANDO AGORA", state.jogoAtual.titulo, "Restam ${state.tempoRestante}", EmberOrangeGlow, Modifier.weight(1f))
+            state.proximoLancamento?.let { InfoBox("PRÓXIMA ESTREIA", it.titulo, "${it.dataLancamento} • ${it.contagemRegressiva}", AmberBrass, Modifier.weight(1f)) }
+        }
+        Text("Ritmo diário: ${state.ritmoDiario}  •  ${state.diasRestantes}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
+        Text("Tempo disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun ReleaseCarousel(releases: List<PlannerReleaseUi>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("PRÓXIMAS ESTREIAS", EmberOrangeGlow)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 4.dp)) {
+            items(releases, key = { it.id }) { release ->
+                Column(Modifier.size(width = 116.dp, height = 190.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    GameCoverArtwork(release.titulo, release.coverUrl, modifier = Modifier.size(width = 116.dp, height = 145.dp), cornerRadius = 10.dp)
+                    Text(release.titulo, color = BoneCream, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1)
+                    Text(release.contagemRegressiva, color = EmberOrangeGlow, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                }
             }
         }
-        Spacer(Modifier.height(4.dp))
-        Text("Ritmo diário: ${state.ritmoDiario}  •  ${state.diasRestantes}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-        Text("Tempo de jogo disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
-        state.avisoSobreposicao?.let { Text(it, color = SageClear, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
     }
 }
 
 @Composable
-private fun ReleaseCard(title: String, date: String, countdown: String) {
-    PlannerCard {
-        SectionLabel("PRÓXIMA ESTREIA DAY ONE", EmberOrangeGlow)
-        Text(title, color = BoneCream, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
-        Text("$date • $countdown", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun DedicatedAgendaCard(state: PlannerUiState.AgendaDedicadaTbd, onEvent: (PlannerEvent) -> Unit) {
-    PlannerCard(container = Color(0xFF1F1912), border = AmberBrass) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            SectionLabel("AGENDA DEDICADA — DURAÇÃO A DEFINIR", AmberBrass)
-            state.proximoLancamento?.let { Text(it.dataLancamento, color = AmberBrass, style = MaterialTheme.typography.labelMedium) }
+private fun GapFillersCard(games: List<PlannerSuggestionUi>, onOpen: () -> Unit) {
+    PlannerCard(container = Color(0xFF171B20), border = CarbonBorderHairline) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionLabel("PREENCHIMENTOS DE LACUNA", EmberOrangeGlow)
+            Text("VER FILA", color = EmberOrangeGlow, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
+        Text("Jogos curtos que cabem no tempo disponível.", color = AshGrey, style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            games.take(3).forEach { game ->
+                GameCoverArtwork(game.titulo, game.coverUrl, modifier = Modifier.size(56.dp, 78.dp), cornerRadius = 8.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GapFillersSheet(games: List<PlannerSuggestionUi>, onStart: (Long) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 30.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Escolha seu próximo preenchimento", color = BoneCream, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+        Text("A jornada atual será encerrada e este jogo passará a ser seu foco principal.", color = AshGrey, style = MaterialTheme.typography.bodySmall)
+        games.forEach { game ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                GameCoverArtwork(game.titulo, game.coverUrl, modifier = Modifier.size(58.dp, 78.dp), cornerRadius = 8.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(game.titulo, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text(game.duracao, color = EmberOrangeGlow, style = MaterialTheme.typography.labelMedium)
+                    Button(onClick = { onStart(game.id) }, colors = ButtonDefaults.buttonColors(containerColor = EmberOrangePrimary, contentColor = CarbonMatteBackground), shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text("Iniciar jornada", fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DedicatedAgendaCard(state: PlannerUiState.AgendaDedicadaTbd) {
+    PlannerCard(container = Color(0xFF1F1912), border = AmberBrass) {
+        SectionLabel("AGENDA DEDICADA — DURAÇÃO A DEFINIR", AmberBrass)
         Text(state.jogo.titulo, color = BoneCream, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-        Text("Agenda Dedicada — Duração a definir", color = AmberBrass, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
         Text(state.mensagem.removePrefix("🔒 "), color = AshGrey, style = MaterialTheme.typography.bodySmall)
         Text("Ritmo diário: ${state.ritmoDiario}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { onEvent(PlannerEvent.DefinirEstimativa) },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberBrass, contentColor = Color(0xFF1F1400)),
-                shape = RoundedCornerShape(19.dp)
-            ) { Text("Definir estimativa", fontWeight = FontWeight.ExtraBold) }
-            Button(
-                onClick = { onEvent(PlannerEvent.ManterDuracaoAdefinir) },
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberBrass),
-                shape = RoundedCornerShape(19.dp)
-            ) { Text("Manter aberto") }
-        }
     }
 }
 
-@Composable
-private fun SuggestionsCard(sugestoes: List<io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerSuggestionUi>) {
-    PlannerCard(container = Color(0xFF171B20), border = CarbonBorderHairline) {
-        SectionLabel("JOGOS QUE CABEM NESSA LACUNA", EmberOrangeGlow)
-        Text(
-            "Se quiser manter o ritmo, estes jogos da sua fila podem ser concluídos antes da estreia:",
-            color = AshGrey,
-            style = MaterialTheme.typography.bodySmall
-        )
-        sugestoes.forEach { sugestao ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(sugestao.titulo, color = BoneCream, style = MaterialTheme.typography.bodyMedium)
-                Text(sugestao.duracao, color = EmberOrangeGlow, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlannerCard(
-    container: Color = CarbonSurface,
-    border: Color = CarbonBorderSubtle,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, border, RoundedCornerShape(20.dp)),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = container)
-    ) {
+@Composable private fun PlannerCard(container: Color = CarbonSurface, border: Color = CarbonBorderSubtle, content: @Composable ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth().border(1.dp, border, RoundedCornerShape(20.dp)), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = container)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp), content = content)
     }
 }
 
-@Composable
-private fun InfoBox(label: String, title: String, meta: String, accent: Color, modifier: Modifier) {
+@Composable private fun InfoBox(label: String, title: String, meta: String, accent: Color, modifier: Modifier) {
     Column(modifier.border(1.dp, accent.copy(alpha = .4f), RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, color = accent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         Text(title, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), maxLines = 2)
@@ -215,12 +202,5 @@ private fun InfoBox(label: String, title: String, meta: String, accent: Color, m
     }
 }
 
-@Composable
-private fun SectionLabel(text: String, color: Color = AshGrey) {
-    Text(text, color = color, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-}
-
-@Composable
-private fun MessageCard(message: String, color: Color = AshGrey) {
-    PlannerCard { Text(message, color = color, style = MaterialTheme.typography.bodyMedium) }
-}
+@Composable private fun SectionLabel(text: String, color: Color = AshGrey) = Text(text, color = color, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+@Composable private fun MessageCard(message: String, color: Color = AshGrey) = PlannerCard { Text(message, color = color, style = MaterialTheme.typography.bodyMedium) }

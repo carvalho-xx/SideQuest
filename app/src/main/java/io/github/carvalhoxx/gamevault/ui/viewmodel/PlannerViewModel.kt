@@ -29,6 +29,10 @@ class PlannerViewModel(
     private val nowMillis: () -> Long = { System.currentTimeMillis() }
 ) : ViewModel() {
 
+    fun iniciarJornada(jogoId: Long) {
+        viewModelScope.launch { repository.startPlannerJourney(jogoId) }
+    }
+
     private val _state = MutableStateFlow<PlannerUiState>(PlannerUiState.Idle)
     val state: StateFlow<PlannerUiState> = _state.asStateFlow()
 
@@ -56,14 +60,16 @@ class PlannerViewModel(
 
         val ritmo = getGlobalDailyRhythmUseCase()
         val overlap = calculateScheduleOverlapUseCase(jogoAtual, lancamentos, now)
+        val lancamentosUi = lancamentos.map { it.toReleaseUi(now) }
         val proximoLancamento = overlap.nextDayOne?.toReleaseUi(now)
         val jogoUi = jogoAtual.toPlannerUi(now)
 
         if (getEffectiveDurationUseCase(jogoAtual) is DurationResolution.DurationTbdLock) {
             return PlannerUiState.AgendaDedicadaTbd(
                 jogo = jogoUi,
-                ritmoDiario = formatDailyRhythm(ritmo),
-                proximoLancamento = proximoLancamento
+                    ritmoDiario = formatDailyRhythm(ritmo),
+                proximoLancamento = proximoLancamento,
+                lancamentos = lancamentosUi
             )
         }
 
@@ -81,19 +87,21 @@ class PlannerViewModel(
                 PlannerSuggestionUi(
                     id = jogo.id,
                     titulo = jogo.title,
-                    duracao = TimeFormatUtils.formatSecondsToHhMmSs(duration)
+                    duracao = TimeFormatUtils.formatSecondsToHhMmSs(duration),
+                    coverUrl = jogo.coverUrl
                 )
             }
             .toList()
 
-        return overlap.toReadyState(jogoUi, ritmo, proximoLancamento, sugestoes)
+        return overlap.toReadyState(jogoUi, ritmo, proximoLancamento, sugestoes, lancamentosUi)
     }
 
     private fun ScheduleOverlapResult.toReadyState(
         jogo: PlannerGameUi,
         ritmoDiarioSegundos: Long,
         proximoLancamento: PlannerReleaseUi?,
-        sugestoes: List<PlannerSuggestionUi>
+        sugestoes: List<PlannerSuggestionUi>,
+        lancamentos: List<PlannerReleaseUi>
     ): PlannerUiState.Ready {
         val dias = if (ritmoDiarioSegundos > 0L) {
             ceil(remainingSeconds.toDouble() / ritmoDiarioSegundos).toLong()
@@ -115,7 +123,8 @@ class PlannerViewModel(
             tempoDisponivel = TimeFormatUtils.formatSecondsToHhMmSs(availablePlayingSeconds),
             diasRestantes = "$dias ${if (dias == 1L) "dia" else "dias"} restantes",
             avisoSobreposicao = aviso,
-            sugestoes = if (willOverlap) sugestoes else emptyList()
+            sugestoes = if (willOverlap) sugestoes else emptyList(),
+            lancamentos = lancamentos
         )
     }
 
@@ -130,7 +139,8 @@ class PlannerViewModel(
         titulo = title,
         dataLancamento = TimeFormatUtils.formatDateOrTbd(releaseDate),
         contagemRegressiva = TimeFormatUtils.formatReleaseCountdownBadge(releaseDate, now),
-        duracaoAdefinir = getEffectiveDurationUseCase(this) is DurationResolution.DurationTbdLock
+        duracaoAdefinir = getEffectiveDurationUseCase(this) is DurationResolution.DurationTbdLock,
+        coverUrl = coverUrl
     )
 
     private fun formatDailyRhythm(seconds: Long): String {

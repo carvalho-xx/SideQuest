@@ -19,7 +19,8 @@ sealed interface PlannerUiState {
         val tempoDisponivel: String,
         val diasRestantes: String,
         val avisoSobreposicao: String?,
-        val sugestoes: List<PlannerSuggestionUi> = emptyList()
+        val sugestoes: List<PlannerSuggestionUi> = emptyList(),
+        val lancamentos: List<PlannerReleaseUi> = emptyList()
     ) : PlannerUiState
 
     /** Estado visual da duração indefinida (DURATION_TBD_LOCK). */
@@ -27,7 +28,8 @@ sealed interface PlannerUiState {
         val jogo: PlannerGameUi,
         val ritmoDiario: String,
         val proximoLancamento: PlannerReleaseUi?,
-        val mensagem: String = "🔒 Agenda dedicada: duração a definir — aguardando dados de duração."
+        val mensagem: String = "🔒 Agenda dedicada: duração a definir — aguardando dados de duração.",
+        val lancamentos: List<PlannerReleaseUi> = emptyList()
     ) : PlannerUiState
 }
 
@@ -36,6 +38,7 @@ sealed interface PlannerEvent {
     data object AbrirRitmoGlobal : PlannerEvent
     data object DefinirEstimativa : PlannerEvent
     data object ManterDuracaoAdefinir : PlannerEvent
+    data class IniciarJornada(val jogoId: Long) : PlannerEvent
 }
 
 data class PlannerGameUi(
@@ -49,11 +52,13 @@ data class PlannerReleaseUi(
     val titulo: String,
     val dataLancamento: String,
     val contagemRegressiva: String,
-    val duracaoAdefinir: Boolean
+    val duracaoAdefinir: Boolean,
+    val coverUrl: String? = null
 )
 
 data class PlannerSuggestionUi(
     val id: Long,
     val titulo: String,
-    val duracao: String
+    val duracao: String,
+    val coverUrl: String? = null
 )

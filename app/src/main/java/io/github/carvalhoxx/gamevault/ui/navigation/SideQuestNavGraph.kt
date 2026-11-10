@@ -211,7 +211,11 @@ fun SideQuestNavGraph(
             composable(BottomNavTab.PLANNER.route) {
                 PlannerScreen(
                     uiState = plannerState,
-                    onEvent = { }
+                    onEvent = { event ->
+                        if (event is io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerEvent.IniciarJornada) {
+                            plannerViewModel.iniciarJornada(event.jogoId)
+                        }
+                    }
                 )
             }
 

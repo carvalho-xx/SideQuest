@@ -100,6 +100,23 @@ class GameRepository(
         )
     }
 
+    /** Troca o foco da agenda de forma atômica do ponto de vista da regra de negócio. */
+    suspend fun startPlannerJourney(gameId: Long, nowMillis: Long = System.currentTimeMillis()) {
+        val currentFocus = gameDao.getAllGamesSnapshot().firstOrNull { it.isMainFocus }
+        if (currentFocus != null && currentFocus.id != gameId) {
+            stopSessionTimer(currentFocus.id, nowMillis)
+            gameDao.getGameById(currentFocus.id)?.let {
+                gameDao.updateGame(it.copy(isMainFocus = false))
+            }
+        }
+        val selected = gameDao.getGameById(gameId) ?: return
+        saveGame(selected.copy(
+            status = GameStatus.PLAYING,
+            isMainFocus = true,
+            startDate = selected.startDate ?: nowMillis
+        ))
+    }
+
     /**
      * Atualiza o tempo exato manualmente (HH:MM:SS do save do console/PC).
      */
