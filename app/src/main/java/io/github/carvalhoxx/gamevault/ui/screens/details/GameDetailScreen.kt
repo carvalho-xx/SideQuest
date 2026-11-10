@@ -795,8 +795,10 @@ fun GameDetailScreen(
             gameTitle = game.title,
             initialSeconds = liveSeconds,
             initialCompletionDateMillis = game.completionDate,
+            initialRating = game.personalRating,
+            initialMemoryNote = game.coreMemoryNote,
             onDismiss = { showCompleteGameDialog = false },
-            onConfirm = { totalSec, completionMillis ->
+            onConfirm = { totalSec, completionMillis, rating, memory ->
                 showCompleteGameDialog = false
                 onSaveGame(
                     game.copy(
@@ -804,7 +806,10 @@ fun GameDetailScreen(
                         isMainFocus = false,
                         timePlayedSeconds = totalSec,
                         activeTimerStartTime = null,
-                        completionDate = completionMillis
+                        completionDate = completionMillis,
+                        personalRating = rating,
+                        isHallOfFame = rating >= 11f,
+                        coreMemoryNote = memory.ifBlank { null }
                     )
                 )
             }
