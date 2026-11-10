@@ -30,6 +30,13 @@ sealed interface PlannerUiState {
     ) : PlannerUiState
 }
 
+/** Eventos da tela Agenda. A tela permanece stateless e só comunica intenções. */
+sealed interface PlannerEvent {
+    data object AbrirRitmoGlobal : PlannerEvent
+    data object DefinirEstimativa : PlannerEvent
+    data object ManterDuracaoAdefinir : PlannerEvent
+}
+
 data class PlannerGameUi(
     val id: Long,
     val titulo: String,

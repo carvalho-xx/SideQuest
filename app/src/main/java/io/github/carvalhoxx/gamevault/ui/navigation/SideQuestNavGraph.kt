@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -96,7 +97,7 @@ fun SideQuestNavGraph(
     val statusMessage by viewModel.statusMessage.collectAsState()
     val isSyncingLibrary by viewModel.isSyncingLibrary.collectAsState()
     val syncProgressLabel by viewModel.syncProgressLabel.collectAsState()
-    val plannerState by plannerViewModel.state.collectAsState()
+    val plannerState by plannerViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(statusMessage) {
         val msg = statusMessage
@@ -209,7 +210,8 @@ fun SideQuestNavGraph(
 
             composable(BottomNavTab.PLANNER.route) {
                 PlannerScreen(
-                    uiState = plannerState
+                    uiState = plannerState,
+                    onEvent = { }
                 )
             }
 
