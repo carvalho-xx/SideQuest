@@ -44,7 +44,8 @@ sealed interface PlannerEvent {
 data class PlannerGameUi(
     val id: Long,
     val titulo: String,
-    val tempoJogado: String
+    val tempoJogado: String,
+    val coverUrl: String? = null
 )
 
 data class PlannerReleaseUi(
@@ -53,7 +54,8 @@ data class PlannerReleaseUi(
     val dataLancamento: String,
     val contagemRegressiva: String,
     val duracaoAdefinir: Boolean,
-    val coverUrl: String? = null
+    val coverUrl: String? = null,
+    val anoLancamento: Int? = null
 )
 
 data class PlannerSuggestionUi(

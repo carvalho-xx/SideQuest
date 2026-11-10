@@ -27,6 +27,7 @@ data class GameEntity(
     val coverUrl: String? = null,
     val backdropUrl: String? = null,
     val releaseDate: Long? = null,
+    val releaseYear: Int? = null,
     val genres: String = "",
     val platform: String = "PC",
     val status: GameStatus = GameStatus.BACKLOG,

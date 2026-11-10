@@ -30,6 +30,7 @@ object HltbReferenceCatalog {
             coverUrl = igdbCoverId?.let(::igdbCover),
             backdropUrl = igdbCoverId?.let(::igdbCover),
             releaseDateMillis = TimeFormatUtils.parseDayMonthAndYearToMillis(dayMonth, year),
+            releaseYear = year?.toIntOrNull(),
             genres = GameMetadataService.normalizeGenresPtBr(genres),
             platform = platform,
             hltbMainSeconds = if (isUnreleased) null else mainHours?.times(3600L),

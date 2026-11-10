@@ -10,6 +10,7 @@ data class RemoteGameMetadata(
     val coverUrl: String? = null,
     val backdropUrl: String? = null,
     val releaseDateMillis: Long? = null,
+    val releaseYear: Int? = null,
     val genres: String = "",
     val platform: String = "PC",
     val hltbMainSeconds: Long? = null,

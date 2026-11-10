@@ -404,7 +404,7 @@ class GameMetadataService(
 
             val releaseYear = extractJsonLong(obj, "release_world")?.toInt()
             val releaseMillis = if (releaseYear != null && releaseYear in 1970..2100) {
-                TimeFormatUtils.parseDayMonthAndYearToMillis("01/01", releaseYear.toString())
+                null
             } else {
                 null
             }
@@ -427,6 +427,7 @@ class GameMetadataService(
                     coverUrl = coverUrl,
                     backdropUrl = coverUrl,
                     releaseDateMillis = releaseMillis,
+                    releaseYear = releaseYear,
                     genres = "",
                     platform = platforms,
                     hltbMainSeconds = if (isUnreleased) null else compMain,
@@ -469,6 +470,7 @@ class GameMetadataService(
             val backgroundImage = extractJsonString(topLevel, "background_image")
 
             val releaseMillis = parseIsoDateToMillis(releasedStr)
+            val releaseYear = releasedStr?.trim()?.takeIf { it.matches(Regex("\\d{4}")) }?.toIntOrNull()
             val isUnreleased = tba || (releaseMillis != null && releaseMillis > now)
 
             val genres = extractNestedNames(obj, "genres")
@@ -486,6 +488,7 @@ class GameMetadataService(
                     coverUrl = backgroundImage,
                     backdropUrl = backgroundImage,
                     releaseDateMillis = releaseMillis,
+                    releaseYear = releaseYear,
                     genres = genres,
                     platform = platforms,
                     hltbMainSeconds = null,
@@ -603,6 +606,7 @@ class GameMetadataService(
             coverUrl = primary.coverUrl ?: hltb.coverUrl,
             backdropUrl = primary.backdropUrl ?: hltb.backdropUrl ?: primary.coverUrl,
             releaseDateMillis = primary.releaseDateMillis ?: hltb.releaseDateMillis,
+            releaseYear = primary.releaseYear ?: hltb.releaseYear,
             genres = primary.genres.ifBlank { hltb.genres },
             platform = if (primary.platform.isBlank() || primary.platform == "Multiplataforma") {
                 hltb.platform.ifBlank { primary.platform }

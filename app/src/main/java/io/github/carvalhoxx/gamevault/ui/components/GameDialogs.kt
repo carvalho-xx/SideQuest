@@ -785,8 +785,8 @@ fun GameFormDialog(
     val initDayMonth = remember(initialGame?.releaseDate) {
         formatDayMonth(initialGame?.releaseDate)
     }
-    val initYear = remember(initialGame?.releaseDate) {
-        formatYear(initialGame?.releaseDate)
+    val initYear = remember(initialGame?.releaseDate, initialGame?.releaseYear) {
+        initialGame?.releaseYear?.toString() ?: formatYear(initialGame?.releaseDate)
     }
 
     var releaseDayMonthText by remember { mutableStateOf(initDayMonth) }
@@ -829,6 +829,10 @@ fun GameFormDialog(
         if (meta.releaseDateMillis != null && meta.releaseDateMillis > 0L) {
             releaseDayMonthText = formatDayMonth(meta.releaseDateMillis)
             releaseYearText = formatYear(meta.releaseDateMillis)
+            hasOnlineReleaseDate = true
+        } else if (meta.releaseYear != null) {
+            releaseDayMonthText = ""
+            releaseYearText = meta.releaseYear.toString()
             hasOnlineReleaseDate = true
         }
         val isFuture = meta.isUnreleased ||
@@ -1791,7 +1795,8 @@ fun GameFormDialog(
                     val parsedRelease = TimeFormatUtils.parseDayMonthAndYearToMillis(
                         releaseDayMonthText,
                         releaseYearText
-                    ) ?: initialGame?.releaseDate
+                    ) ?: if (releaseYearText.isBlank()) initialGame?.releaseDate else null
+                    val parsedReleaseYear = releaseYearText.toIntOrNull()?.takeIf { it in 1970..2100 }
 
                     val parsedCompletionDate = TimeFormatUtils.parseDayMonthAndYearToMillis(
                         completionDayMonthText,
@@ -1837,6 +1842,7 @@ fun GameFormDialog(
                             hltbCompletionistSeconds = hltb100Sec,
                             userCustomEstimateSeconds = null,
                             releaseDate = parsedRelease,
+                            releaseYear = parsedReleaseYear,
                             isOwned = status != GameStatus.WISHLIST
                         )
                     )

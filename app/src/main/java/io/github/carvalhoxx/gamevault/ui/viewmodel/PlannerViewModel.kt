@@ -131,16 +131,18 @@ class PlannerViewModel(
     private fun GameEntity.toPlannerUi(now: Long): PlannerGameUi = PlannerGameUi(
         id = id,
         titulo = title,
-        tempoJogado = TimeFormatUtils.formatSecondsToHhMmSs(getLiveTimePlayedSeconds(now))
+        tempoJogado = TimeFormatUtils.formatSecondsToHhMmSs(getLiveTimePlayedSeconds(now)),
+        coverUrl = coverUrl
     )
 
     private fun GameEntity.toReleaseUi(now: Long): PlannerReleaseUi = PlannerReleaseUi(
         id = id,
         titulo = title,
-        dataLancamento = TimeFormatUtils.formatDateOrTbd(releaseDate),
+        dataLancamento = TimeFormatUtils.formatDateOrYearOrTbd(releaseDate, releaseYear),
         contagemRegressiva = TimeFormatUtils.formatReleaseCountdownBadge(releaseDate, now),
         duracaoAdefinir = getEffectiveDurationUseCase(this) is DurationResolution.DurationTbdLock,
-        coverUrl = coverUrl
+        coverUrl = coverUrl,
+        anoLancamento = releaseYear
     )
 
     private fun formatDailyRhythm(seconds: Long): String {

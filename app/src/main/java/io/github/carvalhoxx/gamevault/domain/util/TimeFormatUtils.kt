@@ -62,15 +62,12 @@ object TimeFormatUtils {
         val year = yearStr.trim().toIntOrNull() ?: return null
         if (year < 1970 || year > 2100) return null
 
-        var day = 1
-        var month = 1
-        if (!dayMonth.isNullOrBlank()) {
-            val dmParts = dayMonth.trim().split("/")
-            if (dmParts.size >= 2) {
-                day = dmParts[0].trim().toIntOrNull()?.coerceIn(1, 31) ?: 1
-                month = dmParts[1].trim().toIntOrNull()?.coerceIn(1, 12) ?: 1
-            }
-        }
+        // Um ano sem mês/dia é uma previsão, não deve virar 01/01.
+        if (dayMonth.isNullOrBlank()) return null
+        val dmParts = dayMonth.trim().split("/")
+        if (dmParts.size < 2) return null
+        val day = dmParts[0].trim().toIntOrNull()?.takeIf { it in 1..31 } ?: return null
+        val month = dmParts[1].trim().toIntOrNull()?.takeIf { it in 1..12 } ?: return null
 
         return runCatching {
             val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
@@ -95,6 +92,11 @@ object TimeFormatUtils {
             }
             formatter.format(Date(timestampMillis))
         }.getOrDefault("A definir")
+    }
+
+    fun formatDateOrYearOrTbd(timestampMillis: Long?, year: Int?): String {
+        if (timestampMillis != null && timestampMillis > 0L) return formatDateOrTbd(timestampMillis)
+        return year?.takeIf { it in 1970..2100 }?.toString() ?: "A definir"
     }
 
     /**

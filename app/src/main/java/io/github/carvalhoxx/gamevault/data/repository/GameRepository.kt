@@ -216,7 +216,8 @@ class GameRepository(
             externalApiId = remote.externalApiId ?: current.externalApiId,
             coverUrl = remote.coverUrl ?: current.coverUrl,
             backdropUrl = remote.backdropUrl ?: current.backdropUrl,
-            releaseDate = remote.releaseDateMillis ?: current.releaseDate,
+            releaseDate = remote.releaseDateMillis ?: if (remote.releaseYear != null) null else current.releaseDate,
+            releaseYear = remote.releaseYear ?: current.releaseYear,
             genres = resolvedGenres,
             hltbMainSeconds = remote.hltbMainSeconds ?: current.hltbMainSeconds,
             hltbExtraSeconds = remote.hltbExtraSeconds ?: current.hltbExtraSeconds,
@@ -291,7 +292,8 @@ class GameRepository(
                 val newGenres = GameMetadataService.normalizeGenresPtBr(
                     remote.genres.ifBlank { game.genres }
                 )
-                val newRelease = remote.releaseDateMillis ?: game.releaseDate
+                val newRelease = remote.releaseDateMillis ?: if (remote.releaseYear != null) null else game.releaseDate
+                val newReleaseYear = remote.releaseYear ?: game.releaseYear
                 val newExternalId = remote.externalApiId ?: game.externalApiId
 
                 if (newCover != game.coverUrl ||
@@ -300,6 +302,7 @@ class GameRepository(
                     newComp != game.hltbCompletionistSeconds ||
                     newGenres != game.genres ||
                     newRelease != game.releaseDate ||
+                    newReleaseYear != game.releaseYear ||
                     newExternalId != game.externalApiId
                 ) {
                     gameDao.updateGame(
@@ -308,6 +311,7 @@ class GameRepository(
                             coverUrl = newCover,
                             backdropUrl = newBackdrop,
                             releaseDate = newRelease,
+                            releaseYear = newReleaseYear,
                             genres = newGenres,
                             hltbMainSeconds = newMain,
                             hltbExtraSeconds = newExtra,

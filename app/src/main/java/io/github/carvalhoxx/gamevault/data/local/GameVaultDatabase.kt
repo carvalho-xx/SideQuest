@@ -5,13 +5,15 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import io.github.carvalhoxx.gamevault.data.local.converter.RoomConverters
 import io.github.carvalhoxx.gamevault.data.local.dao.GameDao
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 
 @Database(
     entities = [GameEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -32,9 +34,16 @@ abstract class GameVaultDatabase : RoomDatabase() {
                     GameVaultDatabase::class.java,
                     DATABASE_NAME
                 )
+                    .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN releaseYear INTEGER")
             }
         }
     }

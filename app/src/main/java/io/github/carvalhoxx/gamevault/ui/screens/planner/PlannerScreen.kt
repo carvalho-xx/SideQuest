@@ -118,11 +118,12 @@ private fun ConflictCard(state: PlannerUiState.Ready) {
     PlannerCard {
         SectionLabel("CRONOGRAMA ATÉ A PRÓXIMA ESTREIA")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoBox("JOGANDO AGORA", state.jogoAtual.titulo, "Restam ${state.tempoRestante}", EmberOrangeGlow, Modifier.weight(1f))
-            state.proximoLancamento?.let { InfoBox("PRÓXIMA ESTREIA", it.titulo, "${it.dataLancamento} • ${it.contagemRegressiva}", AmberBrass, Modifier.weight(1f)) }
+            GameInfoBox("JOGANDO AGORA", state.jogoAtual.titulo, "Restam ${state.tempoRestante}", state.jogoAtual.coverUrl, EmberOrangeGlow, Modifier.weight(1f))
+            state.proximoLancamento?.let { GameInfoBox("PRÓXIMA ESTREIA", it.titulo, "${it.dataLancamento} • ${it.contagemRegressiva}", it.coverUrl, AmberBrass, Modifier.weight(1f)) }
         }
         Text("Ritmo diário: ${state.ritmoDiario}  •  ${state.diasRestantes}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-        Text("Tempo disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
+        Text("Tempo jogável disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
+        state.avisoSobreposicao?.let { Text(it, color = SageClear, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
     }
 }
 
@@ -145,12 +146,12 @@ private fun ReleaseCarousel(releases: List<PlannerReleaseUi>) {
 @Composable
 private fun GapFillersCard(games: List<PlannerSuggestionUi>, onOpen: () -> Unit) {
     PlannerCard(container = Color(0xFF171B20), border = CarbonBorderHairline) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen), horizontalArrangement = Arrangement.SpaceBetween) {
             SectionLabel("PREENCHIMENTOS DE LACUNA", EmberOrangeGlow)
             Text("VER FILA", color = EmberOrangeGlow, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
         Text("Jogos curtos que cabem no tempo disponível.", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             games.take(3).forEach { game ->
                 GameCoverArtwork(game.titulo, game.coverUrl, modifier = Modifier.size(56.dp, 78.dp), cornerRadius = 8.dp)
             }
@@ -199,6 +200,17 @@ private fun DedicatedAgendaCard(state: PlannerUiState.AgendaDedicadaTbd) {
         Text(label, color = accent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         Text(title, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), maxLines = 2)
         Text(meta, color = AshGrey, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable private fun GameInfoBox(label: String, title: String, meta: String, coverUrl: String?, accent: Color, modifier: Modifier) {
+    Row(modifier.border(1.dp, accent.copy(alpha = .4f), RoundedCornerShape(12.dp)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        GameCoverArtwork(title, coverUrl, modifier = Modifier.size(58.dp, 78.dp), cornerRadius = 8.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, color = accent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+            Text(title, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), maxLines = 2)
+            Text(meta, color = AshGrey, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
