@@ -46,6 +46,7 @@ import io.github.carvalhoxx.gamevault.ui.components.AppIcons
 import io.github.carvalhoxx.gamevault.ui.screens.dashboard.DashboardScreen
 import io.github.carvalhoxx.gamevault.ui.screens.details.GameDetailScreen
 import io.github.carvalhoxx.gamevault.ui.screens.library.LibraryScreen
+import io.github.carvalhoxx.gamevault.ui.screens.planner.PlannerScreen
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateBackground
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateElevated
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateSurface
@@ -53,6 +54,7 @@ import io.github.carvalhoxx.gamevault.ui.theme.NeonPurplePrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextPrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextSecondary
 import io.github.carvalhoxx.gamevault.ui.viewmodel.GameVaultViewModel
+import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerViewModel
 
 enum class BottomNavTab(
     val route: String,
@@ -68,6 +70,7 @@ enum class BottomNavTab(
 @Composable
 fun SideQuestNavGraph(
     viewModel: GameVaultViewModel,
+    plannerViewModel: PlannerViewModel,
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
@@ -93,6 +96,7 @@ fun SideQuestNavGraph(
     val statusMessage by viewModel.statusMessage.collectAsState()
     val isSyncingLibrary by viewModel.isSyncingLibrary.collectAsState()
     val syncProgressLabel by viewModel.syncProgressLabel.collectAsState()
+    val plannerState by plannerViewModel.state.collectAsState()
 
     LaunchedEffect(statusMessage) {
         val msg = statusMessage
@@ -204,9 +208,8 @@ fun SideQuestNavGraph(
             }
 
             composable(BottomNavTab.PLANNER.route) {
-                PhasePlaceholderScreen(
-                    title = "Planejador de Lançamentos",
-                    subtitle = "Motor de cronograma completo será expandido na Fase 4 (${dashboardState.dayOneGames.size} lançamentos monitorados)."
+                PlannerScreen(
+                    uiState = plannerState
                 )
             }
 

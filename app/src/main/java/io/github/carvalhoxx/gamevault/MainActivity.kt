@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.carvalhoxx.gamevault.ui.navigation.SideQuestNavGraph
 import io.github.carvalhoxx.gamevault.ui.theme.GameVaultTheme
 import io.github.carvalhoxx.gamevault.ui.viewmodel.GameVaultViewModel
+import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +22,13 @@ class MainActivity : ComponentActivity() {
                 val viewModel: GameVaultViewModel = viewModel(
                     factory = GameVaultViewModel.provideFactory(appContainer.gameRepository)
                 )
-                SideQuestNavGraph(viewModel = viewModel)
+                val plannerViewModel: PlannerViewModel = viewModel(
+                    factory = PlannerViewModel.provideFactory(appContainer.gameRepository)
+                )
+                SideQuestNavGraph(
+                    viewModel = viewModel,
+                    plannerViewModel = plannerViewModel
+                )
             }
         }
     }
