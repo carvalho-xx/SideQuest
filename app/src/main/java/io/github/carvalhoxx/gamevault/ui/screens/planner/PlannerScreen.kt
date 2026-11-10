@@ -83,7 +83,6 @@ fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -> Unit) {
             is PlannerUiState.Ready -> {
                 item { ConflictCard(uiState) }
                 if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
-                uiState.avisoSobreposicao?.let { item { MessageCard(it, SageClear) } }
                 if (uiState.sugestoes.isNotEmpty()) item { GapFillersCard(uiState.sugestoes) { gapAberta = true } }
             }
             is PlannerUiState.AgendaDedicadaTbd -> {
