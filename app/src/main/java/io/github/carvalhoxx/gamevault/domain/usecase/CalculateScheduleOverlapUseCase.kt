@@ -62,7 +62,9 @@ class CalculateScheduleOverlapUseCase(
         return ScheduleOverlapResult(
             willOverlap = remainingSeconds > availablePlayingSeconds,
             remainingSeconds = remainingSeconds,
-            availableSeconds = availablePlayingSeconds,
+            // O card da agenda exibe o tempo corrido até a estreia. O tempo
+            // jogável, limitado pelo ritmo diário, é usado somente no conflito.
+            availableSeconds = availableSeconds,
             nextDayOne = nextDayOne
         )
     }
