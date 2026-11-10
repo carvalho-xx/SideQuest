@@ -31,30 +31,26 @@ class CalculateScheduleOverlapUseCase(
             }
             .minByOrNull { it.releaseDate!! }
 
-        if (nextDayOne == null) {
-            return ScheduleOverlapResult(
-                willOverlap = false,
-                remainingSeconds = 0L,
-                availableSeconds = 0L,
-                nextDayOne = null
-            )
-        }
-
         val duration = getEffectiveDurationUseCase(currentGame)
         val resolvedDuration = duration as? DurationResolution.Resolved
         if (currentGame.status != GameStatus.PLAYING || resolvedDuration == null) {
             return ScheduleOverlapResult(
                 willOverlap = false,
                 remainingSeconds = 0L,
-                availableSeconds = secondsUntil(nextDayOne.releaseDate!!, nowMillis),
+                availableSeconds = nextDayOne?.releaseDate
+                    ?.let { secondsUntil(it, nowMillis) }
+                    ?: 0L,
                 nextDayOne = nextDayOne,
                 currentDurationIsTbd = duration is DurationResolution.DurationTbdLock
             )
         }
 
-        val remainingSeconds = (resolvedDuration.durationSeconds - currentGame.getLiveTimePlayedSeconds(nowMillis))
-            .coerceAtLeast(0L)
-        val availableSeconds = secondsUntil(nextDayOne.releaseDate!!, nowMillis)
+        val timePlayedSeconds = currentGame.getLiveTimePlayedSeconds(nowMillis)
+        val effectiveDuration = resolvedDuration.durationSeconds
+        val remainingSeconds = maxOf(0L, effectiveDuration - timePlayedSeconds)
+        val availableSeconds = nextDayOne?.releaseDate
+            ?.let { secondsUntil(it, nowMillis) }
+            ?: 0L
         val dailyRhythmSeconds = getGlobalDailyRhythmUseCase()
         val availablePlayingSeconds = if (dailyRhythmSeconds > 0L) {
             availableSeconds / 86_400L * dailyRhythmSeconds +

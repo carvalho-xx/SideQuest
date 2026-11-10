@@ -13,14 +13,14 @@ import io.github.carvalhoxx.gamevault.domain.model.DurationResolution
  */
 class GetEffectiveDurationUseCase {
     operator fun invoke(game: GameEntity): DurationResolution {
-        game.userCustomEstimateSeconds?.let { customEstimate ->
+        game.userCustomEstimateSeconds?.takeIf { it > 0L }?.let { customEstimate ->
             return DurationResolution.Resolved(
                 durationSeconds = customEstimate,
                 isUserCustomEstimate = true
             )
         }
 
-        game.hltbMainSeconds?.let { hltbEstimate ->
+        game.getOfficialHltbTargetSeconds()?.let { hltbEstimate ->
             return DurationResolution.Resolved(
                 durationSeconds = hltbEstimate,
                 isUserCustomEstimate = false

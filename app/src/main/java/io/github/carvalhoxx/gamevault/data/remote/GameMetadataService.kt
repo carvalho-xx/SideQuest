@@ -98,7 +98,13 @@ class GameMetadataService(
                     nt.contains(normQuery) -> 2
                     else -> 3
                 }
-            }.thenBy { if ((it.hltbMainSeconds ?: 0L) > 0L) 0 else 1 }
+            }
+                // Entre resultados igualmente relevantes, prefira lançamentos novos/futuros.
+                // Isso evita que um título legado da mesma franquia ocupe o primeiro lugar
+                // quando o usuário busca por um próximo lançamento (ex.: "GTA 6").
+                .thenBy { if (it.isUnreleased) 0 else 1 }
+                .thenByDescending { it.releaseDateMillis ?: Long.MIN_VALUE }
+                .thenBy { if ((it.hltbMainSeconds ?: 0L) > 0L) 0 else 1 }
         ).take(10)
     }
 
@@ -441,7 +447,7 @@ class GameMetadataService(
         if (apiKey.isEmpty()) return emptyList()
 
         val encoded = URLEncoder.encode(query, "UTF-8")
-        val url = "https://api.rawg.io/api/games?search=$encoded&page_size=8&key=$apiKey"
+        val url = "https://api.rawg.io/api/games?search=$encoded&page_size=8&ordering=-popularity&key=$apiKey"
         val json = httpGet(url, mapOf("Accept" to "application/json", "User-Agent" to "GameVault/1.0"))
             ?: return emptyList()
 
@@ -504,7 +510,8 @@ class GameMetadataService(
         val sanitizedQuery = escapeJson(query.trim())
         val body = """
             search "$sanitizedQuery";
-            fields name, first_release_date, cover.image_id, genres.name, platforms.abbreviation, platforms.name;
+            fields name, first_release_date, cover.image_id, genres.name, platforms.abbreviation, platforms.name, popularity;
+            sort popularity desc;
             limit 8;
         """.trimIndent()
 
