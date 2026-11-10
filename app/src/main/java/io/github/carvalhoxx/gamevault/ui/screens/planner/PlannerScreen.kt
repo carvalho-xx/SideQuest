@@ -101,6 +101,9 @@ fun PlannerScreen(
                     item { ReleaseCard(release.titulo, release.dataLancamento, release.contagemRegressiva) }
                 }
                 uiState.avisoSobreposicao?.let { item { MessageCard(it, SageClear) } }
+                if (uiState.sugestoes.isNotEmpty()) {
+                    item { SuggestionsCard(uiState.sugestoes) }
+                }
             }
             is PlannerUiState.AgendaDedicadaTbd -> {
                 item { DedicatedAgendaCard(uiState, onEvent) }
@@ -163,6 +166,27 @@ private fun DedicatedAgendaCard(state: PlannerUiState.AgendaDedicadaTbd, onEvent
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberBrass),
                 shape = RoundedCornerShape(19.dp)
             ) { Text("Manter aberto") }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionsCard(sugestoes: List<io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerSuggestionUi>) {
+    PlannerCard(container = Color(0xFF171B20), border = CarbonBorderHairline) {
+        SectionLabel("JOGOS QUE CABEM NESSA LACUNA", EmberOrangeGlow)
+        Text(
+            "Se quiser manter o ritmo, estes jogos da sua fila podem ser concluídos antes da estreia:",
+            color = AshGrey,
+            style = MaterialTheme.typography.bodySmall
+        )
+        sugestoes.forEach { sugestao ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(sugestao.titulo, color = BoneCream, style = MaterialTheme.typography.bodyMedium)
+                Text(sugestao.duracao, color = EmberOrangeGlow, style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 }

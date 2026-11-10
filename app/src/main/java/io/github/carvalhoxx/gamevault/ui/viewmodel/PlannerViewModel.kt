@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.data.repository.GameRepository
 import io.github.carvalhoxx.gamevault.domain.model.DurationResolution
+import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.ScheduleOverlapResult
 import io.github.carvalhoxx.gamevault.domain.usecase.CalculateScheduleOverlapUseCase
 import io.github.carvalhoxx.gamevault.domain.usecase.GetEffectiveDurationUseCase
@@ -35,11 +36,12 @@ class PlannerViewModel(
         viewModelScope.launch {
             combine(
                 repository.observeMainFocusGame(),
-                repository.observeDayOneGames()
-            ) { jogoAtual, lancamentos -> jogoAtual to lancamentos }
-                .collectLatest { (jogoAtual, lancamentos) ->
+                repository.observeDayOneGames(),
+                repository.observeAllGames()
+            ) { jogoAtual, lancamentos, jogos -> Triple(jogoAtual, lancamentos, jogos) }
+                .collectLatest { (jogoAtual, lancamentos, jogos) ->
                     _state.value = PlannerUiState.Loading
-                    _state.value = buildState(jogoAtual, lancamentos, nowMillis())
+                    _state.value = buildState(jogoAtual, lancamentos, jogos, nowMillis())
                 }
         }
     }
@@ -47,6 +49,7 @@ class PlannerViewModel(
     private fun buildState(
         jogoAtual: GameEntity?,
         lancamentos: List<GameEntity>,
+        jogos: List<GameEntity>,
         now: Long
     ): PlannerUiState {
         if (jogoAtual == null) return PlannerUiState.Idle
@@ -64,21 +67,41 @@ class PlannerViewModel(
             )
         }
 
-        return overlap.toReadyState(jogoUi, ritmo, proximoLancamento)
+        val sugestoes = jogos
+            .asSequence()
+            .filter { it.id != jogoAtual.id && it.status == GameStatus.BACKLOG }
+            .mapNotNull { jogo ->
+                val duration = jogo.getEffectiveDurationSeconds()
+                    ?.takeIf { it > 0L && it <= overlap.availablePlayingSeconds }
+                duration?.let { jogo to it }
+            }
+            .sortedWith(compareBy<Pair<GameEntity, Long>> { it.first.priority.ordinal }.thenBy { it.second })
+            .take(5)
+            .map { (jogo, duration) ->
+                PlannerSuggestionUi(
+                    id = jogo.id,
+                    titulo = jogo.title,
+                    duracao = TimeFormatUtils.formatSecondsToHhMmSs(duration)
+                )
+            }
+            .toList()
+
+        return overlap.toReadyState(jogoUi, ritmo, proximoLancamento, sugestoes)
     }
 
     private fun ScheduleOverlapResult.toReadyState(
         jogo: PlannerGameUi,
         ritmoDiarioSegundos: Long,
-        proximoLancamento: PlannerReleaseUi?
+        proximoLancamento: PlannerReleaseUi?,
+        sugestoes: List<PlannerSuggestionUi>
     ): PlannerUiState.Ready {
         val dias = if (ritmoDiarioSegundos > 0L) {
             ceil(remainingSeconds.toDouble() / ritmoDiarioSegundos).toLong()
         } else {
             0L
         }
-        val aviso = if (willOverlap) {
-            "Atenção: o jogo pode não terminar antes de ${nextDayOne?.title ?: "o próximo lançamento"}."
+        val aviso = if (willOverlap && nextDayOne != null) {
+            "Você pode acabar não zerando ${jogo.titulo} até o lançamento de ${nextDayOne.title} com esse ritmo de ${formatDailyRhythm(ritmoDiarioSegundos)}."
         } else if (nextDayOne != null) {
             "Você tem tempo para terminar antes do próximo lançamento."
         } else {
@@ -91,7 +114,8 @@ class PlannerViewModel(
             tempoRestante = TimeFormatUtils.formatSecondsToHhMmSs(remainingSeconds),
             tempoDisponivel = TimeFormatUtils.formatSecondsToHhMmSs(availablePlayingSeconds),
             diasRestantes = "$dias ${if (dias == 1L) "dia" else "dias"} restantes",
-            avisoSobreposicao = aviso
+            avisoSobreposicao = aviso,
+            sugestoes = if (willOverlap) sugestoes else emptyList()
         )
     }
 

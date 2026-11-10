@@ -18,7 +18,8 @@ sealed interface PlannerUiState {
         val tempoRestante: String,
         val tempoDisponivel: String,
         val diasRestantes: String,
-        val avisoSobreposicao: String?
+        val avisoSobreposicao: String?,
+        val sugestoes: List<PlannerSuggestionUi> = emptyList()
     ) : PlannerUiState
 
     /** Estado visual da duração indefinida (DURATION_TBD_LOCK). */
@@ -49,4 +50,10 @@ data class PlannerReleaseUi(
     val dataLancamento: String,
     val contagemRegressiva: String,
     val duracaoAdefinir: Boolean
+)
+
+data class PlannerSuggestionUi(
+    val id: Long,
+    val titulo: String,
+    val duracao: String
 )

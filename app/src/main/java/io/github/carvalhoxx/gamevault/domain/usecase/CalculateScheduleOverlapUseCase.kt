@@ -61,7 +61,7 @@ class CalculateScheduleOverlapUseCase(
         }
 
         return ScheduleOverlapResult(
-            willOverlap = remainingSeconds > availablePlayingSeconds,
+            willOverlap = nextDayOne != null && remainingSeconds > availablePlayingSeconds,
             remainingSeconds = remainingSeconds,
             availablePlayingSeconds = availablePlayingSeconds,
             calendarSecondsUntilRelease = calendarSecondsUntilRelease,
