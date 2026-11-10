@@ -89,7 +89,7 @@ class PlannerViewModel(
             ritmoDiario = formatDailyRhythm(ritmoDiarioSegundos),
             proximoLancamento = proximoLancamento,
             tempoRestante = TimeFormatUtils.formatSecondsToHhMmSs(remainingSeconds),
-            tempoDisponivel = TimeFormatUtils.formatSecondsToHhMmSs(availableSeconds),
+            tempoDisponivel = TimeFormatUtils.formatSecondsToHhMmSs(availablePlayingSeconds),
             diasRestantes = "$dias ${if (dias == 1L) "dia" else "dias"} restantes",
             avisoSobreposicao = aviso
         )

@@ -37,7 +37,8 @@ class CalculateScheduleOverlapUseCase(
             return ScheduleOverlapResult(
                 willOverlap = false,
                 remainingSeconds = 0L,
-                availableSeconds = nextDayOne?.releaseDate
+                availablePlayingSeconds = 0L,
+                calendarSecondsUntilRelease = nextDayOne?.releaseDate
                     ?.let { secondsUntil(it, nowMillis) }
                     ?: 0L,
                 nextDayOne = nextDayOne,
@@ -48,13 +49,13 @@ class CalculateScheduleOverlapUseCase(
         val timePlayedSeconds = currentGame.getLiveTimePlayedSeconds(nowMillis)
         val effectiveDuration = resolvedDuration.durationSeconds
         val remainingSeconds = maxOf(0L, effectiveDuration - timePlayedSeconds)
-        val availableSeconds = nextDayOne?.releaseDate
+        val calendarSecondsUntilRelease = nextDayOne?.releaseDate
             ?.let { secondsUntil(it, nowMillis) }
             ?: 0L
         val dailyRhythmSeconds = getGlobalDailyRhythmUseCase()
         val availablePlayingSeconds = if (dailyRhythmSeconds > 0L) {
-            availableSeconds / 86_400L * dailyRhythmSeconds +
-                (availableSeconds % 86_400L * dailyRhythmSeconds) / 86_400L
+            calendarSecondsUntilRelease / 86_400L * dailyRhythmSeconds +
+                (calendarSecondsUntilRelease % 86_400L * dailyRhythmSeconds) / 86_400L
         } else {
             0L
         }
@@ -62,9 +63,8 @@ class CalculateScheduleOverlapUseCase(
         return ScheduleOverlapResult(
             willOverlap = remainingSeconds > availablePlayingSeconds,
             remainingSeconds = remainingSeconds,
-            // O card da agenda exibe o tempo corrido até a estreia. O tempo
-            // jogável, limitado pelo ritmo diário, é usado somente no conflito.
-            availableSeconds = availableSeconds,
+            availablePlayingSeconds = availablePlayingSeconds,
+            calendarSecondsUntilRelease = calendarSecondsUntilRelease,
             nextDayOne = nextDayOne
         )
     }

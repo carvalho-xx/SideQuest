@@ -127,7 +127,7 @@ private fun ConflictCard(state: PlannerUiState.Ready) {
         }
         Spacer(Modifier.height(4.dp))
         Text("Ritmo diário: ${state.ritmoDiario}  •  ${state.diasRestantes}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
-        Text("Tempo disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
+        Text("Tempo de jogo disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
         state.avisoSobreposicao?.let { Text(it, color = SageClear, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
     }
 }
