@@ -22,14 +22,14 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE status = :status ORDER BY isMainFocus DESC, priority ASC, completionDate DESC, title ASC")
     fun observeGamesByStatus(status: GameStatus): Flow<List<GameEntity>>
 
-    @Query("SELECT * FROM games WHERE status = 'PLAYING' ORDER BY isMainFocus DESC, activeTimerStartTime DESC, id DESC")
-    fun observePlayingGames(): Flow<List<GameEntity>>
+    @Query("SELECT * FROM games WHERE status = :status ORDER BY isMainFocus DESC, activeTimerStartTime DESC, id DESC")
+    fun observePlayingGames(status: GameStatus = GameStatus.PLAYING): Flow<List<GameEntity>>
 
-    @Query("SELECT * FROM games WHERE status = 'PLAYING' ORDER BY isMainFocus DESC, activeTimerStartTime DESC, id DESC LIMIT 1")
-    fun observeMainFocusGame(): Flow<GameEntity?>
+    @Query("SELECT * FROM games WHERE status = :status ORDER BY isMainFocus DESC, activeTimerStartTime DESC, id DESC LIMIT 1")
+    fun observeMainFocusGame(status: GameStatus = GameStatus.PLAYING): Flow<GameEntity?>
 
-    @Query("SELECT * FROM games WHERE status = 'DAY_ONE' ORDER BY CASE WHEN releaseDate IS NULL THEN 1 ELSE 0 END, releaseDate ASC")
-    fun observeDayOneGames(): Flow<List<GameEntity>>
+    @Query("SELECT * FROM games WHERE status = :status ORDER BY CASE WHEN releaseDate IS NULL THEN 1 ELSE 0 END, releaseDate ASC")
+    fun observeDayOneGames(status: GameStatus = GameStatus.DAY_ONE): Flow<List<GameEntity>>
 
     @Query(
         "SELECT * FROM games " +

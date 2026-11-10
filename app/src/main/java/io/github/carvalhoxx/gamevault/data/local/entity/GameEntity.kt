@@ -12,6 +12,7 @@ import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
     tableName = "games",
     indices = [
         Index(value = ["status"]),
+        Index(value = ["status", "releaseDate"]),
         Index(value = ["isMainFocus"]),
         Index(value = ["isHallOfFame"]),
         Index(value = ["isPersonalGoty"])
