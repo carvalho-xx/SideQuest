@@ -1,0 +1,76 @@
+package io.github.carvalhoxx.gamevault.domain.usecase
+
+import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
+import io.github.carvalhoxx.gamevault.domain.model.DurationResolution
+import io.github.carvalhoxx.gamevault.domain.model.GameStatus
+import io.github.carvalhoxx.gamevault.domain.model.ScheduleOverlapResult
+
+/**
+ * Verifica se o jogo em andamento ultrapassa o próximo lançamento Day One.
+ *
+ * A duração do Day One não participa deste cálculo: somente a duração restante
+ * do jogo atual, o ritmo global (2h/dia por enquanto) e sua data de lançamento
+ * são necessários. Assim, um Day One com DURATION_TBD_LOCK não causa NPE.
+ */
+class CalculateScheduleOverlapUseCase(
+    private val getGlobalDailyRhythmUseCase: GetGlobalDailyRhythmUseCase =
+        GetGlobalDailyRhythmUseCase(),
+    private val getEffectiveDurationUseCase: GetEffectiveDurationUseCase =
+        GetEffectiveDurationUseCase()
+) {
+    operator fun invoke(
+        currentGame: GameEntity,
+        dayOneGames: List<GameEntity>,
+        nowMillis: Long = System.currentTimeMillis()
+    ): ScheduleOverlapResult {
+        val nextDayOne = dayOneGames
+            .asSequence()
+            .filter { it.status == GameStatus.DAY_ONE }
+            .filter { releaseDate ->
+                releaseDate.releaseDate != null && releaseDate.releaseDate >= nowMillis
+            }
+            .minByOrNull { it.releaseDate!! }
+
+        if (nextDayOne == null) {
+            return ScheduleOverlapResult(
+                willOverlap = false,
+                remainingSeconds = 0L,
+                availableSeconds = 0L,
+                nextDayOne = null
+            )
+        }
+
+        val duration = getEffectiveDurationUseCase(currentGame)
+        val resolvedDuration = duration as? DurationResolution.Resolved
+        if (currentGame.status != GameStatus.PLAYING || resolvedDuration == null) {
+            return ScheduleOverlapResult(
+                willOverlap = false,
+                remainingSeconds = 0L,
+                availableSeconds = secondsUntil(nextDayOne.releaseDate!!, nowMillis),
+                nextDayOne = nextDayOne,
+                currentDurationIsTbd = duration is DurationResolution.DurationTbdLock
+            )
+        }
+
+        val remainingSeconds = (resolvedDuration.durationSeconds - currentGame.getLiveTimePlayedSeconds(nowMillis))
+            .coerceAtLeast(0L)
+        val availableSeconds = secondsUntil(nextDayOne.releaseDate!!, nowMillis)
+        val dailyRhythmSeconds = getGlobalDailyRhythmUseCase()
+        val availablePlayingSeconds = if (dailyRhythmSeconds > 0L) {
+            availableSeconds / 86_400L * dailyRhythmSeconds +
+                (availableSeconds % 86_400L * dailyRhythmSeconds) / 86_400L
+        } else {
+            0L
+        }
+
+        return ScheduleOverlapResult(
+            willOverlap = remainingSeconds > availablePlayingSeconds,
+            remainingSeconds = remainingSeconds,
+            availableSeconds = availablePlayingSeconds,
+            nextDayOne = nextDayOne
+        )
+    }
+
+    private fun secondsUntil(releaseDateMillis: Long, nowMillis: Long): Long =
+        ((releaseDateMillis - nowMillis) / 1_000L).coerceAtLeast(0L)
+}
