@@ -5,6 +5,7 @@ import io.github.carvalhoxx.gamevault.data.importer.CsvGameImporter
 import io.github.carvalhoxx.gamevault.data.local.GameVaultDatabase
 import io.github.carvalhoxx.gamevault.data.remote.GameMetadataService
 import io.github.carvalhoxx.gamevault.data.repository.GameRepository
+import io.github.carvalhoxx.gamevault.data.repository.UserRepository
 
 class AppContainer(context: Context) {
 
@@ -26,5 +27,9 @@ class AppContainer(context: Context) {
             csvGameImporter = csvGameImporter,
             metadataService = metadataService
         )
+    }
+
+    val userRepository: UserRepository by lazy {
+        UserRepository(database.userProfileDao())
     }
 }
