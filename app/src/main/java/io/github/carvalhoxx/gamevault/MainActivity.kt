@@ -21,7 +21,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             GameVaultTheme {
                 val viewModel: GameVaultViewModel = viewModel(
-                    factory = GameVaultViewModel.provideFactory(appContainer.gameRepository)
+                    factory = GameVaultViewModel.provideFactory(
+                        repository = appContainer.gameRepository,
+                        userRepository = appContainer.userRepository
+                    )
                 )
                 val plannerViewModel: PlannerViewModel = viewModel(
                     factory = PlannerViewModel.provideFactory(

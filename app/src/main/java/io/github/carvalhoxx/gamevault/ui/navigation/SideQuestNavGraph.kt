@@ -50,8 +50,6 @@ import io.github.carvalhoxx.gamevault.ui.screens.library.LibraryScreen
 import io.github.carvalhoxx.gamevault.ui.screens.planner.PlannerScreen
 import io.github.carvalhoxx.gamevault.ui.screens.profile.ProfileScreen
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateBackground
-import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateElevated
-import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateSurface
 import io.github.carvalhoxx.gamevault.ui.theme.NeonPurplePrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextPrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextSecondary
@@ -151,6 +149,7 @@ fun SideQuestNavGraph(
                     uiState = dashboardState,
                     onNavigateToLibrary = { navigateToTab(BottomNavTab.LIBRARY) },
                     onNavigateToPlanner = { navigateToTab(BottomNavTab.PLANNER) },
+                    onNavigateToProfile = { navController.navigate("profile") },
                     onOpenGameDetails = { gameId ->
                         navController.navigate("game_details/$gameId")
                     },

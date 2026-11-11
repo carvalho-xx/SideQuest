@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.data.repository.GameRepository
-import io.github.carvalhoxx.gamevault.domain.model.CompletionStyle
+import io.github.carvalhoxx.gamevault.data.repository.UserRepository
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.PriorityTier
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
@@ -30,6 +30,7 @@ data class LibraryFilterState(
 )
 
 data class DashboardUiState(
+    val userName: String = "",
     val allGames: List<GameEntity> = emptyList(),
     val mainPlayingGame: GameEntity? = null,
     val dayOneGames: List<GameEntity> = emptyList(),
@@ -43,7 +44,8 @@ data class DashboardUiState(
 )
 
 class GameVaultViewModel(
-    private val repository: GameRepository
+    private val repository: GameRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _nowMillis = MutableStateFlow(System.currentTimeMillis())
@@ -82,6 +84,8 @@ class GameVaultViewModel(
             personalGotyGames = goty,
             wishlistGames = all.filter { it.status == GameStatus.WISHLIST || !it.isOwned }
         )
+    }.combine(userRepository.observeUserProfile()) { state, profile ->
+        state.copy(userName = profile?.name.orEmpty())
     }.combine(_nowMillis) { state, now ->
         val yearNow = Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.YEAR)
         val completedInCurrentYear = state.allGames.filter { game ->
@@ -321,11 +325,14 @@ class GameVaultViewModel(
     }
 
     companion object {
-        fun provideFactory(repository: GameRepository): ViewModelProvider.Factory =
+        fun provideFactory(
+            repository: GameRepository,
+            userRepository: UserRepository
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return GameVaultViewModel(repository) as T
+                    return GameVaultViewModel(repository, userRepository) as T
                 }
             }
     }

@@ -73,6 +73,7 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onNavigateToLibrary: () -> Unit,
     onNavigateToPlanner: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onOpenGameDetails: (Long) -> Unit,
     onToggleSessionTimer: (GameEntity) -> Unit,
     onUpdateExactTime: (gameId: Long, hours: Long, minutes: Long, seconds: Long) -> Unit,
@@ -113,15 +114,19 @@ fun DashboardScreen(
                 ConsolePlayingHeroSection(
                     game = mainGame,
                     nowMillis = uiState.nowMillis,
+                    userName = uiState.userName,
                     onAddGameClick = { showAddGameDialog = true },
+                    onNavigateToProfile = onNavigateToProfile,
                     onCardClick = { onOpenGameDetails(mainGame.id) },
                     onToggleTimer = { onToggleSessionTimer(mainGame) },
                     onOpenManualInput = { manualTimeTargetGame = mainGame }
                 )
             } else {
                 ConsoleEmptyPlayingHeroSection(
+                    userName = uiState.userName,
                     onAddGameClick = { showAddGameDialog = true },
-                    onOpenLibraryClick = onNavigateToLibrary
+                    onOpenLibraryClick = onNavigateToLibrary,
+                    onNavigateToProfile = onNavigateToProfile
                 )
             }
         }
@@ -211,7 +216,9 @@ fun DashboardScreen(
 
 @Composable
 private fun ConsoleTopBar(
+    userName: String,
     onAddGameClick: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -259,11 +266,12 @@ private fun ConsoleTopBar(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(CarbonElevated)
-                    .border(1.dp, CarbonBorderSubtle, CircleShape),
+                    .border(1.dp, CarbonBorderSubtle, CircleShape)
+                    .clickable(onClick = onNavigateToProfile),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "C",
+                    text = userName.firstOrNull()?.uppercase() ?: "C",
                     style = MaterialTheme.typography.labelLarge.copy(
                         color = BoneCream,
                         fontWeight = FontWeight.Bold
@@ -294,7 +302,9 @@ private fun ConsoleTopBar(
 private fun ConsolePlayingHeroSection(
     game: GameEntity,
     nowMillis: Long,
+    userName: String,
     onAddGameClick: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onCardClick: () -> Unit,
     onToggleTimer: () -> Unit,
     onOpenManualInput: () -> Unit
@@ -320,7 +330,9 @@ private fun ConsolePlayingHeroSection(
                 .padding(horizontal = 24.dp, vertical = 18.dp)
         ) {
             ConsoleTopBar(
-                onAddGameClick = onAddGameClick
+                userName = userName,
+                onAddGameClick = onAddGameClick,
+                onNavigateToProfile = onNavigateToProfile
             )
 
             Spacer(modifier = Modifier.height(22.dp))
@@ -623,8 +635,10 @@ private fun HeroSessionActions(
 
 @Composable
 private fun ConsoleEmptyPlayingHeroSection(
+    userName: String,
     onAddGameClick: () -> Unit,
-    onOpenLibraryClick: () -> Unit
+    onOpenLibraryClick: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -645,7 +659,9 @@ private fun ConsoleEmptyPlayingHeroSection(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             ConsoleTopBar(
-                onAddGameClick = onAddGameClick
+                userName = userName,
+                onAddGameClick = onAddGameClick,
+                onNavigateToProfile = onNavigateToProfile
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
