@@ -9,17 +9,21 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import io.github.carvalhoxx.gamevault.data.local.converter.RoomConverters
 import io.github.carvalhoxx.gamevault.data.local.dao.GameDao
+import io.github.carvalhoxx.gamevault.data.local.dao.UserProfileDao
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
+import io.github.carvalhoxx.gamevault.data.local.entity.UserProfileEntity
 
 @Database(
-    entities = [GameEntity::class],
-    version = 3,
+    entities = [GameEntity::class, UserProfileEntity::class],
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
 abstract class GameVaultDatabase : RoomDatabase() {
 
     abstract fun gameDao(): GameDao
+
+    abstract fun userProfileDao(): UserProfileDao
 
     companion object {
         private const val DATABASE_NAME = "sidequest_gamevault.db"

@@ -1215,8 +1215,19 @@ fun GameFormDialog(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f)
                                 )
-                                val hltbRefLabel = hltbMainHoursText.toLongOrNull()?.takeIf { it > 0L }
-                                    ?.let { "Ref. HLTB: ~${it}h" }
+                                // A referência exibida precisa acompanhar o estilo selecionado.
+                                // Antes ela sempre lia apenas a duração da campanha, mesmo
+                                // quando o alvo era Extras ou 100%.
+                                val mainHours = hltbMainHoursText.toLongOrNull()?.takeIf { it > 0L }
+                                val extraHours = hltbExtraHoursText.toLongOrNull()?.takeIf { it > 0L }
+                                val completionistHours = hltb100HoursText.toLongOrNull()?.takeIf { it > 0L }
+                                val selectedHltbHours = when (completionStyle) {
+                                    CompletionStyle.MAIN_STORY -> mainHours ?: extraHours ?: completionistHours
+                                    CompletionStyle.MAIN_EXTRA -> extraHours ?: mainHours ?: completionistHours
+                                    CompletionStyle.COMPLETIONIST_100 -> completionistHours ?: extraHours ?: mainHours
+                                }
+                                val hltbRefLabel = selectedHltbHours
+                                    ?.let { "Ref. HLTB (${completionStyle.shortLabel}): ~${it}h" }
                                     ?: "Ritmo livre"
                                 Text(
                                     text = hltbRefLabel,

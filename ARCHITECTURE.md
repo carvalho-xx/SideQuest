@@ -1,141 +1,331 @@
-# GameVault & DayOne Planner - Especificação Técnica e Arquitetura
+# GameVault - Arquitetura Atual do Projeto
 
-> **Instrução para a IA (Antigravity):** Este documento contém a arquitetura, modelagem de dados, regras de negócio e o plano de implementação em fases de um aplicativo Android nativo para gestão de biblioteca de jogos, cronômetro de sessões, otimização de cronograma (Backlog vs. Lançamentos Day One) e rastreamento de promoções. Siga rigorosamente esta stack e consulte a **Seção 3 (Mapeamento de Telas e Imagens de Referência)** ao construir a UI em Jetpack Compose.
-
----
-
-## 1. Visão Geral do Produto
-Aplicativo Android desenvolvido para substituir planilhas complexas de controle de jogos. O sistema automatiza a busca de metadados, oferece um cronômetro integrado de sessões com precisão de segundos (`HH:MM:SS`), calcula estimativas reais de conclusão sem travar o jogador em barras de progresso rígidas, previne conflitos de agenda com grandes lançamentos (*Day One* — mesmo quando ainda não possuem duração estimada), monitora promoções da *Wishlist* e registra memórias afetivas com um sistema exclusivo de avaliação de 0 a 11.
+Este documento descreve a arquitetura real implementada no código do app, alinhando as decisões de estrutura, persistência e UI com o que já está funcionando no projeto.
 
 ---
 
-## 2. Tech Stack Recomendada
-* **Linguagem:** Kotlin (2.0+)
-* **UI Framework:** Jetpack Compose (Material Design 3, Tema Escuro Nativo com paleta Deep Slate `#0D0C14`, Roxo Neon `#B85BFF` e Dourado `#F5C451` para Hall of Fame/GOTY).
-* **Arquitetura:** MVVM (Model-View-ViewModel) + Clean Architecture simplificada (`data`, `domain`, `ui`).
-* **Injeção de Dependência:** Hilt (Dagger).
-* **Banco de Dados Local:** Room Database (SQLite) com suporte a Kotlin Coroutines e `Flow`.
-* **Rede / APIs:** Retrofit2 + OkHttp3 + Kotlinx Serialization.
-* **Carregamento de Imagens:** Coil (`AsyncImage`).
-* **Tarefas em Background & Timer:** Android `WorkManager` (promoções/alertas) + `ForegroundService` (ou persistência de timestamp inicial no `DataStore`) para o Cronômetro de Sessão de Jogo ativo.
-* **Idioma Padrão e Diretrizes Visuais (Obrigatório):**
-  * **100% Português Brasileiro (`pt-BR`):** Toda a interface do usuário (títulos, abas, botões, rótulos de status, níveis de prioridade `Nível S/A/B/C`, placeholders e mensagens de sistema) deve estar integralmente em português brasileiro, sem misturar termos em inglês (ex: usar *"Jogando Agora"*, *"Na Fila"*, *"Lançamento"*, *"Hall da Fama"*, *"Jogo da Vida"*, *"A definir"* em vez de *TBD*).
-  * **Padrão de Ícones Vetoriais (`AppIcons.kt`):** Proibido misturar caracteres de texto/emojis em botões de ação (`←`, `✎`, `🗑`, `🔍`, `⚙`). Todos os botões de ação e abas de navegação devem usar ícones vetoriais Material (`ImageVector` em `AppIcons`) com tamanho proporcional (`22.dp` dentro de botões circulares `42.dp`–`48.dp`), cor padronizada (`TextPrimary`) e borda uniforme (`DeepSlateElevated`).
-  * **Prevenção de Quebra de Layout:** Campos `OutlinedTextField` lado a lado devem ter rótulos (`label`) curtos em linha única (`maxLines = 1`) e exemplos no `placeholder`. Seletores de prioridade (`Nível S/A/B/C`) e precisão decimal (`.0`, `.25`, `.5`, `.75`) devem usar colunas de peso igual (`Modifier.weight(1f)`) com `softWrap = false`.
+## 1. Visão geral do produto
+
+O GameVault é um aplicativo Android em Jetpack Compose para organizar uma biblioteca de jogos, acompanhar o tempo jogado em sessão, controlar a fila de backlog, comparar ritmo com lançamentos Day One e registrar avaliações pessoais e memórias afetivas.
+
+A base atual do app já implementa:
+
+- dashboard com jogo em foco e próximos lançamentos;
+- biblioteca com filtros, busca e roleta da fila;
+- detalhes de jogo com avaliação, tempo, memória e conclusão;
+- agenda/planner com cálculo de sobreposição e estado de duração indefinida;
+- persistência local em Room com fluxo reativo via StateFlow;
+- sincronização de metadados online e formatação de tempo em HH:MM:SS.
 
 ---
 
-## 3. Mapeamento de Telas e Imagens de Referência (Design Specs)
+## 2. Stack tecnológica implementada
 
-Todas as imagens exportadas do Figma ficarão na pasta `design_refs/` na raiz do projeto. Ao gerar o código de cada tela na **Fase 2, 4, 5 e 6**, o Antigravity deve ler o arquivo de imagem correspondente como referência visual fiel:
+- Linguagem: Kotlin
+- UI: Jetpack Compose + Material 3
+- Arquitetura: MVVM + camadas de UI/ViewModel + Repository + DAO/Entity
+- Banco local: Room
+- Reatividade: Kotlin Flow + StateFlow
+- Navegação: Navigation Compose
+- Persistência de metadados: Room + API local de resolução de dados
+- Tema visual: dark mode com paleta Carbon Matte / Ember Orange
+- Formatação de tempo: utilitários próprios para HH:MM:SS e countdown
 
-| Nome do Arquivo na pasta `design_refs/` | Tela Correspondente no App (Jetpack Compose) | Descrição dos Componentes Visuais |
-| :--- | :--- | :--- |
-| **`01_dashboard_home.png`** | `DashboardScreen.kt` | Cabeçalho com atalho para **Perfil do Usuário** (onde configura dados básicos e Meta Anual de jogos zerados) e botão `+`, faixa de resumo (Meta Anual de Zerados e Jogos na Fila, **sem** contador de Hall 11/10), Card Hero "Jogando Agora" com Cronômetro (`HH:MM:SS`) e comparador flexível com HLTB, e carrossel **Radar de Lançamentos** (exibindo apenas os próximos lançamentos aguardados pelo usuário com data e contagem regressiva; o cálculo de terminar um jogo antes de outro fica exclusivamente na **Agenda**). O **Hall da Fama** foi removido da tela inicial. |
-| **`02_library_backlog.png`** | `LibraryScreen.kt` | Lista da Biblioteca com busca, botão `+` de adicionar jogo no topo ao lado do botão de filtros, painel expansível de filtros (com opção *Limpar filtros*), abas de status em português (*Todos, Jogando, Na Fila, Lançamento, Zerados, Abandonados, Pausados*) e botão da *Roleta da Fila*. |
-| **Protótipo FigCraft (`id: 415` — `Novo Jogo`)** | `AddGameDialog` / `NewGameScreen.kt` | Formulário dinâmico de cadastro de jogos com busca automática (IGDB/HLTB), banner inteligente em *Amber Brass* (`#E5A93C`) para detecção automática de lançamentos futuros (*Day One*), seletor de plataformas e blocos de campos condicionais adaptados em tempo real conforme o status escolhido (*Jogando*, *Na Fila*, *Lançamento (Day One)* ou *Zerado*), com rolagem vertical fluida para acomodar tempo final (`HH:MM:SS`), data de conclusão e avaliação de `0` a `11` (`11/10 • Jogo da Vida`). |
-| **`03_game_details_rating11.png`** | `GameDetailScreen.kt` | Cabeçalho com ícones vetoriais padronizados (Voltar, Editar, Excluir), pílulas de referência HLTB, controle de tempo exato (`HH:MM:SS`), Seletor de Nota de `0` a `10` em grade de 2 linhas + linha dedicada de precisão decimal + Botão Dourado **`11/10 • Jogo da Vida`**, menu colapsável de *Memória Afetiva* (que expande ao toque revelando texto, chave *Jogo do Ano Pessoal* e botão *Salvar Memória*) e botão *Marcar como Zerado* (visível apenas enquanto o jogo não estiver `COMPLETED`). |
-| **`04_day_one_planner.png`** | `PlannerScreen.kt` | Configurador de ritmo (`h/dia`), linha do tempo comparando o jogo atual com lançamentos *Day One*, estado de **"Agenda Dedicada / HLTB Pendente (TBD)"** (para jogos não lançados como GTA VI) e sugestões de *Gap Filler*. |
-| **`05_wishlist_and_goty_tiebreaker.png`**| `WishlistDealsScreen.kt` & `GotyTiebreakerDialog.kt` | Lista de desejos com preço-alvo, badge de desconto verde (`-60%`) e modal de **Desempate de GOTY Pessoal** colocando jogos empatados lado a lado. |
+Observação: a aplicação não está em uma Clean Architecture estrita com módulos separados (`data`, `domain`, `ui` totalmente isolados), mas a separação funcional já está bem definida no código:
 
----
-
-## 4. Modelagem do Banco de Dados (Room Entities)
-
-### 4.1. `GameEntity` (Tabela Principal: `games`)
-| Campo | Tipo | Descrição |
-| :--- | :--- | :--- |
-| `id` | `Long` (PK, Auto) | Identificador único local. |
-| `externalApiId` | `String?` | ID do jogo na API (RAWG/IGDB). |
-| `dealApiId` | `String?` | ID do jogo na API de promoções (CheapShark/ITAD). |
-| `title` | `String` | Nome do jogo. |
-| `coverUrl` | `String?` | URL da capa vertical. |
-| `backdropUrl` | `String?` | URL da arte horizontal para cabeçalhos. |
-| `releaseDate` | `Long?` | Timestamp da data de lançamento (crucial para *Day One*). |
-| `genres` | `String` | Lista de gêneros separados por vírgula. |
-| `platform` | `String` | Plataforma escolhida para jogar (ex: PC, PS5, Switch 2). |
-| `status` | `GameStatus` (Enum) | `PLAYING`, `BACKLOG`, `DAY_ONE`, `WISHLIST`, `COMPLETED`, `PAUSED`, `DROPPED`. |
-| `priority` | `PriorityTier` (Enum)| `TIER_S` (Urgente), `TIER_A`, `TIER_B`, `TIER_C`. |
-| `isMainFocus` | `Boolean` | Define se é o jogo principal do momento no cálculo do cronograma. |
-| **Métricas de Tempo (Flexíveis e Precisas)** | | |
-| `hltbMainSeconds` | `Long?` | Referência HLTB Campanha Principal em segundos (**Nullable** para jogos não lançados). |
-| `hltbExtraSeconds` | `Long?` | Referência HLTB Campanha + Extras em segundos (**Nullable**). |
-| `hltbCompletionistSeconds`| `Long?` | Referência HLTB 100%/Platina em segundos (**Nullable**). |
-| `userCustomEstimateSeconds`| `Long?` | Estimativa manual opcional caso o jogo ainda não tenha HLTB ou o jogador queira definir sua própria meta de tempo. |
-| `targetCompletionStyle` | `CompletionStyle` | `MAIN_STORY`, `MAIN_EXTRA`, `COMPLETIONIST_100`. |
-| `timePlayedSeconds` | `Long` | Tempo real jogado em **segundos** (exibido sempre formatado como `HH:MM:SS`). |
-| `activeTimerStartTime` | `Long?` | Timestamp (`System.currentTimeMillis()`) de quando o cronômetro foi iniciado, ou `null` se pausado. |
-| `startDate` | `Long?` | Data em que começou a jogar. |
-| `completionDate` | `Long?` | Data em que zerou (usado para o filtro de GOTY por ano). |
-| **Avaliação (0 a 11) e GOTY** | | |
-| `personalRating` | `Float?` | Nota de `0.0` a `10.0`, permitindo o valor especial **`11.0` ("Jogo da Vida")**. |
-| `isHallOfFame` | `Boolean` | `true` automaticamente quando `personalRating == 11.0f`. |
-| `coreMemoryNote` | `String?` | Relato pessoal/afetivo (ex: "Primeiro co-op zerado com meu amigo"). |
-| `isPersonalGoty` | `Boolean` | Marca se este jogo foi eleito pelo usuário como o GOTY do ano em que foi zerado. |
-| **Wishlist e Promoções** | | |
-| `isOwned` | `Boolean` | Se o usuário já comprou o jogo ou apenas deseja. |
-| `targetPrice` | `Double?` | Preço-alvo que o usuário deseja pagar para receber alerta. |
-| `currentLowestPrice` | `Double?` | Último menor preço registrado pelo `WorkManager`. |
-| `discountPercentage` | `Int?` | Porcentagem de desconto atual. |
+- `data/`: acesso ao banco, importação, repository e serviços remotos
+- `domain/`: modelos e use cases de regra de negócio
+- `ui/`: estados, telas, navegação e componentes visuais
 
 ---
 
-## 5. Regras de Negócio Exclusivas (Core Features)
+## 3. Estrutura de diretórios real
 
-### 5.1. Cronômetro Integrado (`HH:MM:SS`) e Comparador de Ritmo Flexível (Sem Barra Rígida)
-* **Registro de Tempo:** O usuário nunca usa botões genéricos de `+1h`. Ele tem duas formas de registrar seu tempo:
-  1. **Live Session Timer (Cronômetro no App):** Botão `▶ Start Session` no card do jogo atual. Conta o tempo em tempo real (`00:45:12`) salvando o `activeTimerStartTime` para não perder a contagem se o app fechar. Ao parar, soma o tempo decorrido ao `timePlayedSeconds`.
-  2. **Input Manual Exato (`HH:MM:SS`):** Ao clicar no tempo jogado ou ao marcar o jogo como `COMPLETED`, abre-se um seletor numérico de `Horas : Minutos : Segundos` para digitar exatamente o tempo que consta no save do console/PC.
-* **Comportamento quando o tempo passa do HLTB ou termina antes:**
-  * O tempo do HLTB é apenas um **Marcador de Referência** (`Ref. HLTB: ~40h`).
-  * **Se `timePlayedSeconds < hltbTargetSeconds`:** Exibe um indicador visual suave mostrando quanto falta para a média da comunidade.
-  * **Se `timePlayedSeconds > hltbTargetSeconds` (Ex: jogou 43h num jogo de 40h):** A barra **não quebra** nem trava em 100%. Ela muda para a cor dourada/roxa com o status **"Explorando além da média (+03h 15m)"** e a estimativa de término passa a exibir *"Na reta final / No seu próprio ritmo"*.
-  * **Se o usuário clicar em "Marcar como Zerado" antes das 40h (Ex: Rushou em 28h):** O jogo vai imediatamente para `COMPLETED` com o tempo final cravado em `28h`, registrando que o usuário foi mais rápido que a média.
-
-### 5.2. Otimizador de Cronograma e Tratamento de `Null` em Jogos *Day One* (Caso GTA VI)
-* **Cenário 1 — Calcular se você vai zerar o jogo ATUAL antes do lançamento Day One:**
-  * Exemplo: Jogando *Phantom Blade* (Meta 100%: `44h`, já jogou `14h`, faltam `30h`). *GTA VI* lança no dia 19.
-  * Para este cálculo, **o HLTB do GTA VI não importa**. O app usa apenas as `30h` restantes do *Phantom Blade* divididas pelo seu ritmo diário e compara com os dias que faltam até o dia 19.
-* **Cenário 2 — Como fica a agenda DEPOIS do lançamento Day One quando o HLTB é `null` (Jogo inédito):**
-  * Jogos que ainda não lançaram terão `hltbMainSeconds = null`. O Planner **nunca deve quebrar com `NullPointerException`**.
-  * **Lógica de Fallback em 3 Níveis (`getEffectiveDurationSeconds()`):**
-    1. Tenta usar `userCustomEstimateSeconds` (se o usuário quis chutar ex: *"Acho que vou gastar 80h no GTA VI"*).
-    2. Se `null`, tenta usar a estimativa oficial da API (`hltbMainSeconds` / `hltbCompletionistSeconds`).
-    3. Se ambos forem `null` (padrão para lançamentos inéditos), o jogo entra no estado **`DURATION_TBD_LOCK` (Agenda Dedicada / Duração Indefinida)**.
-  * **Efeito Visual do `DURATION_TBD_LOCK` no Planner:** A partir do dia 19 (lançamento do GTA VI), o calendário mostra um bloco especial: *"🔒 Agenda Dedicada: GTA VI (Sem previsão de término — Aguardando dados de duração)"*. Se o usuário quiser planejar jogos *depois* do GTA VI, um botão rápido *"Definir estimativa provisória (ex: 50h)"* fica disponível no próprio card.
-
-### 5.3. Sistema de Nota 0 a 11 ("Jogo da Vida") e Aba Futura de GOTYs por Ano de Conclusão
-* Notas vão de `0.0` a `10.0` (com seletor em grade de 2 linhas `0..5` e `6..10` e ajuste fino decimal `.0`, `.25`, `.5`, `.75`) + nível especial **`11.0` (Jogo da Vida)**.
-* **Remoção do Hall da Fama da Tela Inicial:** O Dashboard (`Início`) **não** exibe mais a seção de *Hall da Fama (11/10)* nem contador de jogos nota 11 no topo, mantendo o foco da tela inicial em sessão ativa, progresso no ano e próximos lançamentos.
-* **Memória Afetiva (`coreMemoryNote`) Opcional e Colapsável:** Na tela de detalhes do jogo, a seção de Memória Afetiva funciona como um menu colapsável (fechado por padrão, expandindo ao toque).
-* **Aba de GOTYs por Ano de Conclusão (Feature Futura):** Em vez de um card solto de Hall da Fama na Home, o aplicativo terá uma aba/seção dedicada de **GOTYs Pessoais**, organizada pelo **ano em que o usuário zerou o jogo** (`completionDate`), e **não** pelo ano de lançamento original. Exemplo: se o usuário zerou *The Legend of Zelda: Ocarina of Time* em **2024**, ele pode elegê-lo como seu **GOTY de 2024** mesmo o jogo tendo sido lançado em 1998. Se 2 ou mais jogos zerados no mesmo ano empatarem na disputa, o modal de **Desempate de GOTY [Ano]** permite escolher o campeão daquele ano.
-
-### 5.4. Roleta da Fila e Preservação de Aba na Navegação
-* **Roleta da Fila (`spinBacklogRoulette`):** Sorteia exclusivamente jogos com status `GameStatus.BACKLOG` (ponderados por `PriorityTier`: Nível S = peso 4, A = 3, B = 2, C = 1). Caso não exista nenhum jogo na fila, a roleta **nunca** deve sortear jogos já zerados (`COMPLETED`) ou de outros status, exibindo um aviso ao usuário.
-* **Destaque da Barra Inferior (`SideQuestNavGraph`):** Ao abrir os detalhes de um jogo (`game_details/{gameId}`), a barra de navegação inferior deve manter destacada a aba de origem (`Início` ou `Biblioteca`), e tocar na aba ativa retorna imediatamente da tela de detalhes para a listagem.
-
-### 5.5. Perfil do Usuário, Ritmo Diário Global e Meta Anual de Jogos Zerados (Feature Futura)
-* **Tela de Perfil do Usuário:** Acessível pelo ícone de perfil no cabeçalho da tela inicial (`DashboardScreen`), permitirá ao usuário configurar suas informações básicas e parâmetros globais:
-  * Nome / apelido e avatar.
-  * **Meta Anual de Jogos Zerados** (ex: `20 jogos no ano`), que alimenta o indicador de progresso anual exibido no topo da tela inicial.
-  * **Ritmo Diário Global (Configuração Única):** Plataformas principais do usuário e o ritmo diário padrão de jogo (ex: `2h/dia` na semana e `4h/dia` no fim de semana), que é uma configuração **global e única** do Perfil/Configurações do app e serve de base padrão para o cálculo do Planner (não existindo ajuste de ritmo diário individual por jogo no formulário de cadastro).
-
-### 5.6. Formulário Dinâmico e Detecção Inteligente de Lançamentos
-* **Detecção Automática de Lançamento (Day One):** Quando o usuário digita o título do jogo e a API (IGDB/HLTB) retorna uma data de lançamento posterior à data atual, o app seleciona automaticamente o status como **"Lançamento (Day One)"** (`GameStatus.DAY_ONE`) e exibe uma caixa de diálogo/aviso inteligente (banner sutil em *Amber Brass* `#E5A93C` logo após a busca da API):
-  > *"Este jogo ainda não foi lançado (Previsto para [Data]). Deseja adicioná-lo ao Radar de Lançamentos?"*
-* **Campos Condicionais por Status na Biblioteca:** A tela **"Novo Jogo"** deve se adaptar dinamicamente conforme o status escolhido pelo usuário, mantendo apenas os campos essenciais de cada estado:
-  * **Jogando Agora (`PLAYING`):** Exibe o input de tempo inicial jogado (`HH:MM:SS`) e o seletor de Estilo de Conclusão Alvo (`CompletionStyle`: *Campanha*, *História + Extras*, *100%*).
-  * **Na Fila / Backlog (`BACKLOG`):** Exibe exclusivamente o seletor de **Prioridade (`PriorityTier`: *Tier S, A, B, C*)** para a Roleta da Fila e o indicador de foco na agenda (`isMainFocus`), sem campos de ritmo diário individual por jogo (pois o ritmo diário é global do Perfil do Usuário).
-  * **Lançamento (`DAY_ONE`):** Exibe o alerta de lançamento detectado, seletor de prioridade para o Radar e duração estimada opcional (permitindo manter *"Duração a definir"* quando `hltbMainSeconds == null`).
-  * **Zerado (`COMPLETED`):** Exibe obrigatoriamente o bloco de tempo final exato (`HH:MM:SS`), a data de conclusão (`completionDate`, essencial para o filtro de GOTY Pessoal por ano) e o seletor de nota de `0` a `11` com o selo especial **"11/10 • Jogo da Vida"** (`isHallOfFame = true`).
+```text
+app/src/main/java/io/github/carvalhoxx/gamevault/
+├── data/
+│   ├── importer/
+│   │   └── CsvGameImporter.kt
+│   ├── local/
+│   │   ├── converter/
+│   │   ├── dao/
+│   │   │   └── GameDao.kt
+│   │   ├── entity/
+│   │   │   └── GameEntity.kt
+│   │   ├── GameVaultDatabase.kt
+│   │   └── UserPlatformStore.kt
+│   ├── remote/
+│   │   ├── GameMetadataModels.kt
+│   │   ├── GameMetadataService.kt
+│   │   └── HltbReferenceCatalog.kt
+│   └── repository/
+│       └── GameRepository.kt
+├── di/
+│   └── AppContainer.kt
+├── domain/
+│   ├── model/
+│   │   ├── CompletionStyle.kt
+│   │   ├── DurationResolution.kt
+│   │   ├── GameStatus.kt
+│   │   ├── PriorityTier.kt
+│   │   └── ScheduleOverlapResult.kt
+│   ├── usecase/
+│   │   ├── CalculateScheduleOverlapUseCase.kt
+│   │   ├── GetEffectiveDurationUseCase.kt
+│   │   └── GetGlobalDailyRhythmUseCase.kt
+│   └── util/
+│       └── TimeFormatUtils.kt
+├── ui/
+│   ├── components/
+│   │   ├── AppIcons.kt
+│   │   ├── GameDialogs.kt
+│   │   └── RemoteImageCache.kt
+│   ├── navigation/
+│   │   └── SideQuestNavGraph.kt
+│   ├── screens/
+│   │   ├── dashboard/
+│   │   ├── details/
+│   │   ├── library/
+│   │   └── planner/
+│   ├── theme/
+│   │   ├── Color.kt
+│   │   ├── Theme.kt
+│   │   └── Type.kt
+│   └── viewmodel/
+│       ├── GameVaultViewModel.kt
+│       ├── PlannerUiState.kt
+│       └── PlannerViewModel.kt
+├── GameVaultApplication.kt
+├── MainActivity.kt
+└── ui/
+```
 
 ---
 
-## 6. Roteiro de Implementação para o Antigravity (Prompts em Fases)
+## 4. Modelo de dados principal
 
-* **Fase 1: Configuração Base e Banco de Dados Local** (Room com campos de tempo em segundos `Long` e HLTB `Long?` nullable, Enums, DAOs e Importador CSV).
-* **Fase 2: UI Principal, Cronômetro de Sessão e Biblioteca** (Guiado pelas imagens `01_dashboard_home.png`, `02_library_backlog.png` e `03_game_details_rating11.png`).
-* **Fase 3: Integração com API de Jogos e Tempos** (Busca automática de capas, datas de lançamento e referências de tempo).
-* **Fase 4: Motor do Cronograma e Tratamento de Day One Nullables** (Guiado pela imagem `04_day_one_planner.png`).
-* **Fase 5: Aba de GOTYs por Ano de Conclusão, Perfil do Usuário (Meta Anual) e Desempate GOTY** (Guiado por `05_wishlist_and_goty_tiebreaker.png`).
-* **Fase 6: Radar de Promoções da Wishlist com WorkManager** (Guiado pela imagem `05_wishlist_and_goty_tiebreaker.png`).
+A entidade central do domínio é `GameEntity`, mapeada para a tabela `games` do Room.
+
+### 4.1. `GameEntity`
+
+Campos principais já presentes no código:
+
+- `id`: identificador local
+- `externalApiId`, `dealApiId`: referências externas
+- `title`, `coverUrl`, `backdropUrl`: identidade visual do jogo
+- `releaseDate`, `releaseYear`: data de estreia e ano
+- `genres`, `platform`: metadados e plataforma
+- `status`: `GameStatus`
+- `priority`: `PriorityTier`
+- `isMainFocus`: foco atual para agenda
+- `hltbMainSeconds`, `hltbExtraSeconds`, `hltbCompletionistSeconds`: referências de tempo
+- `userCustomEstimateSeconds`: estimativa do usuário
+- `targetCompletionStyle`: objetivo de conclusão
+- `timePlayedSeconds`, `activeTimerStartTime`, `startDate`, `completionDate`: cronômetro e histórico
+- `personalRating`, `isHallOfFame`, `coreMemoryNote`, `isPersonalGoty`: nota e memória
+- `isOwned`, `targetPrice`, `currentLowestPrice`, `discountPercentage`: wishlist/promoção
+
+A entidade também expõe métodos de regra de negócio:
+
+- `getOfficialHltbTargetSeconds()`: retorna a duração oficial conforme estilo de finalização
+- `getEffectiveDurationSeconds()`: fallback em 3 níveis
+- `resolveDuration()`: retorna `DurationResolution`
+- `getLiveTimePlayedSeconds()`: inclui sessão ativa em execução
+
+### 4.2. Enums do domínio
+
+`GameStatus`:
+
+- `PLAYING`
+- `BACKLOG`
+- `DAY_ONE`
+- `WISHLIST`
+- `COMPLETED`
+- `PAUSED`
+- `DROPPED`
+
+`PriorityTier`:
+
+- `TIER_S`, `TIER_A`, `TIER_B`, `TIER_C`
+
+`CompletionStyle`:
+
+- `MAIN_STORY`
+- `MAIN_EXTRA`
+- `COMPLETIONIST_100`
+
+---
+
+## 5. Camadas de arquitetura e fluxo de dados
+
+### 5.1. Camada de dados
+
+Localizada em `data/`.
+
+- `GameVaultDatabase`: base do Room
+- `GameDao`: DAO com queries para jogos, status, foco, Hall da Fama, GOTY e biblioteca
+- `GameRepository`: orquestra operações de salvar, remover, atualizar, sincronizar e iniciar/pausar cronômetro
+- `CsvGameImporter`: importação de CSV da biblioteca
+- `GameMetadataService`: resolução online de capa, data e tempo de jogo
+
+### 5.2. Camada de domínio
+
+Localizada em `domain/`.
+
+- `GameStatus`, `PriorityTier`, `CompletionStyle`: modelos do domínio
+- `DurationResolution`: representação de duração resolvida ou indefinida
+- `CalculateScheduleOverlapUseCase`: calcula conflito entre foco atual e lançamentos
+- `GetEffectiveDurationUseCase`: resolve duração real usando usuário e HLTB
+- `GetGlobalDailyRhythmUseCase`: cálculo do ritmo global do usuário
+- `TimeFormatUtils`: formatação em strings amigáveis
+
+### 5.3. Camada de apresentação
+
+Localizada em `ui/`.
+
+- `SideQuestNavGraph`: controlador principal da navegação
+- `DashboardScreen`: tela inicial
+- `LibraryScreen`: biblioteca + filtros + roleta da fila
+- `GameDetailScreen`: detalhes do jogo, nota e memória afetiva
+- `PlannerScreen`: agenda e planejamento de Day One
+- `GameVaultViewModel`: estado e ações da biblioteca e dashboard
+- `PlannerViewModel`: estado da agenda e cálculo de sobreposição
+
+---
+
+## 6. ViewModels e estados reativos
+
+### 6.1. `GameVaultViewModel`
+
+Responsável por:
+
+- observação de todos os jogos em `allGames`
+- filtros da biblioteca em `LibraryFilterState`
+- dashboard em `DashboardUiState`
+- temporizador em tempo real (`_nowMillis`)
+- mensagens de status (`_statusMessage`)
+- sincronização de biblioteca
+- roleta da fila
+
+Principais ações do ViewModel:
+
+- `toggleSessionTimer(game)`
+- `updateExactTimePlayed(gameId, hours, minutes, seconds)`
+- `updateRatingAndMemory(gameId, rating, memoryNote, isPersonalGoty)`
+- `markGameCompleted(game)`
+- `saveGame(game)`
+- `refreshGameMetadata(gameId)`
+- `syncMissingLibraryMetadata()`
+- `deleteGame(gameId)`
+- `spinBacklogRoulette()`, `dismissRouletteWinner()`
+
+### 6.2. `PlannerViewModel`
+
+Responsável por calcular o estado da tela de agenda com base em:
+
+- jogo em foco (`observeMainFocusGame()`)
+- lançamentos Day One (`observeDayOneGames()`)
+- todos os jogos da biblioteca
+- ritmo diário global
+- duração efetiva do jogo (`GetEffectiveDurationUseCase` e `DurationResolution`)
+
+Estados possíveis:
+
+- `Idle`
+- `Loading`
+- `Ready`
+- `AgendaDedicadaTbd`
+
+Esse estado é usado pela tela `PlannerScreen` para renderizar a agenda ou o modo de duração indefinida.
+
+---
+
+## 7. Navegação atual
+
+A navegação principal está em `SideQuestNavGraph` e usa `NavHost` com as rotas:
+
+- `dashboard`
+- `library`
+- `game_details/{gameId}`
+- `planner`
+- `wishlist`
+
+Regras importantes implementadas:
+
+- a barra inferior destaca a aba ativa
+- ao abrir detalhes de jogo, a aba de origem permanece visível
+- clicar na aba ativa pode levar de volta à listagem da origem
+- `navigateToTab()` usa `popBackStack`/`navigate` para manter comportamento esperado
+
+---
+
+## 8. Regras de negócio implementadas no código
+
+### 8.1. Cronômetro e tempo jogado
+
+O cronômetro live funciona com a combinação de:
+
+- `timePlayedSeconds`
+- `activeTimerStartTime`
+- `getLiveTimePlayedSeconds(now)`
+
+Quando a sessão é iniciada, `GameRepository.startSessionTimer()` salva o timestamp e muda o status para `PLAYING`.
+Quando é parada, `stopSessionTimer()` soma o tempo decorrido ao `timePlayedSeconds`.
+
+### 8.2. Fallback seguro para duração de Day One
+
+A regra de negócio foi implementada conforme a especificação original:
+
+1. tenta `userCustomEstimateSeconds`
+2. depois usa `hltbMainSeconds` / `hltbExtraSeconds` / `hltbCompletionistSeconds`
+3. se ambos forem nulos, retorna `DurationResolution.DurationTbdLock`
+
+Isso evita crash em jogos ainda não lançados como GTA VI.
+
+### 8.3. Nota 0 a 11 / Hall da Fama
+
+A lógica atual preserva:
+
+- `personalRating` em faixa de `0.0f` a `11.0f`
+- `isHallOfFame` quando `rating >= 11.0f`
+- memórias afetivas em `coreMemoryNote`
+- GOTY pessoal em `isPersonalGoty`
+
+### 8.4. Biblioteca e roleta da fila
+
+- a roleta considera apenas jogos com status `BACKLOG`
+- a prioridade afeta o peso do sorteio
+- o resultado pode definir o jogo como foco principal para a jornada
+
+---
+
+## 9. Estado atual de implementação
+
+### Já implementado
+
+- Dashboard principal
+- Biblioteca com busca e filtros
+- Detalhes do jogo
+- Formulário de jogo e modais auxiliares
+- Agenda/Planner
+- Lógica de duração a definir / Day One
+- Persistência em Room
+- Importação CSV
+- Sincronização de metadados
+
+### Em desenvolvimento ou pendente
+
+- perfil do usuário e ritmo global configurável
+- wishlist de promoções completa
+- GOTY por ano de conclusão com desempate
+- seção de promoções e alertas automáticos
+- refinamento do fluxo de Day One para perfil do usuário
+
+---
+
+## 10. Observações de manutenção
+
+- O app usa `StateFlow` em `ViewModel` e coleta em `Compose` com `collectAsState()`/`collectAsStateWithLifecycle()`.
+- O tema segue a identidade visual “console ui” com fundo escuro e destaques em laranja/ember.
+- O código já encontra um equilíbrio entre implementação funcional e estrutura de domínio, sem depender de DI pesada para o momento.
+- O projeto está pronto para evoluir em direção a uma arquitetura mais puramente modular, mas a base atual já está estável e funcional.

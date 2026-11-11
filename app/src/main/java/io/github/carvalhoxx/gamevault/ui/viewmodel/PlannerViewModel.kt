@@ -13,11 +13,10 @@ import io.github.carvalhoxx.gamevault.domain.usecase.GetEffectiveDurationUseCase
 import io.github.carvalhoxx.gamevault.domain.usecase.GetGlobalDailyRhythmUseCase
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
@@ -56,30 +55,41 @@ class PlannerViewModel(
         jogos: List<GameEntity>,
         now: Long
     ): PlannerUiState {
-        if (jogoAtual == null) return PlannerUiState.Idle
-
         val ritmo = getGlobalDailyRhythmUseCase()
-        val overlap = calculateScheduleOverlapUseCase(jogoAtual, lancamentos, now)
         val lancamentosUi = lancamentos.map { it.toReleaseUi(now) }
-        val proximoLancamento = overlap.nextDayOne?.toReleaseUi(now)
-        val jogoUi = jogoAtual.toPlannerUi(now)
+        val proximoLancamento = lancamentos
+            .asSequence()
+            .filter { it.status == GameStatus.DAY_ONE }
+            .filter { it.releaseDate != null && it.releaseDate >= now }
+            .minByOrNull { it.releaseDate!! }
+            ?.toReleaseUi(now)
 
-        if (getEffectiveDurationUseCase(jogoAtual) is DurationResolution.DurationTbdLock) {
-            return PlannerUiState.AgendaDedicadaTbd(
-                jogo = jogoUi,
-                    ritmoDiario = formatDailyRhythm(ritmo),
-                proximoLancamento = proximoLancamento,
-                lancamentos = lancamentosUi
-            )
-        }
+        val proximoLancamentoEntity = lancamentos
+            .asSequence()
+            .filter { it.status == GameStatus.DAY_ONE }
+            .filter { it.releaseDate != null && it.releaseDate >= now }
+            .minByOrNull { it.releaseDate!! }
+        val tempoDisponivelParaSugestoes = proximoLancamentoEntity
+            ?.releaseDate
+            ?.let { releaseDate ->
+                calculateAvailablePlayingSeconds(
+                    secondsUntilRelease = ((releaseDate - now) / 1_000L).coerceAtLeast(0L),
+                    dailyRhythmSeconds = ritmo
+                )
+            }
+            ?: 0L
 
         val sugestoes = jogos
             .asSequence()
-            .filter { it.id != jogoAtual.id && it.status == GameStatus.BACKLOG }
+            .filter { it.status == GameStatus.BACKLOG }
+            .filter { it.id != jogoAtual?.id }
             .mapNotNull { jogo ->
-                val duration = jogo.getEffectiveDurationSeconds()
-                    ?.takeIf { it > 0L && it <= overlap.availablePlayingSeconds }
-                duration?.let { jogo to it }
+                val duration = jogo.getEffectiveDurationSeconds()?.takeIf { it > 0L }
+                val remaining = duration?.let {
+                    (it - jogo.getLiveTimePlayedSeconds(now)).coerceAtLeast(0L)
+                }
+                remaining?.takeIf { it > 0L && it <= tempoDisponivelParaSugestoes }
+                    ?.let { jogo to it }
             }
             .sortedWith(compareBy<Pair<GameEntity, Long>> { it.first.priority.ordinal }.thenBy { it.second })
             .take(5)
@@ -92,6 +102,58 @@ class PlannerViewModel(
                 )
             }
             .toList()
+
+        if (jogoAtual == null) {
+            val tempoDisponivel = if (proximoLancamento != null) {
+                val releaseTimestamp = lancamentos
+                    .asSequence()
+                    .filter { it.status == GameStatus.DAY_ONE }
+                    .filter { it.releaseDate != null && it.releaseDate >= now }
+                    .minByOrNull { it.releaseDate!! }
+                    ?.releaseDate ?: now
+                val secondsUntilRelease = ((releaseTimestamp - now) / 1_000L).coerceAtLeast(0L)
+                val daily = ritmo
+                    val available = calculateAvailablePlayingSeconds(secondsUntilRelease, daily)
+                TimeFormatUtils.formatSecondsToHhMmSs(available)
+            } else {
+                "0:00:00"
+            }
+
+            val diasRestantes = if (proximoLancamento != null) {
+                val releaseTimestamp = lancamentos
+                    .asSequence()
+                    .filter { it.status == GameStatus.DAY_ONE }
+                    .filter { it.releaseDate != null && it.releaseDate >= now }
+                    .minByOrNull { it.releaseDate!! }
+                    ?.releaseDate ?: now
+                val secondsUntilRelease = ((releaseTimestamp - now) / 1_000L).coerceAtLeast(0L)
+                val dias = if (ritmo > 0L) ceil(secondsUntilRelease.toDouble() / ritmo.toDouble()).toLong() else 0L
+                "$dias ${if (dias == 1L) "dia" else "dias"} restantes"
+            } else {
+                "Sem lançamentos próximos"
+            }
+
+            return PlannerUiState.Livre(
+                ritmoDiario = formatDailyRhythm(ritmo),
+                proximoLancamento = proximoLancamento,
+                tempoDisponivel = tempoDisponivel,
+                diasRestantes = diasRestantes,
+                sugestoes = sugestoes,
+                lancamentos = lancamentosUi
+            )
+        }
+
+        val overlap = calculateScheduleOverlapUseCase(jogoAtual, lancamentos, now)
+        val jogoUi = jogoAtual.toPlannerUi(now)
+
+        if (getEffectiveDurationUseCase(jogoAtual) is DurationResolution.DurationTbdLock) {
+            return PlannerUiState.AgendaDedicadaTbd(
+                jogo = jogoUi,
+                ritmoDiario = formatDailyRhythm(ritmo),
+                proximoLancamento = proximoLancamento,
+                lancamentos = lancamentosUi
+            )
+        }
 
         return overlap.toReadyState(jogoUi, ritmo, proximoLancamento, sugestoes, lancamentosUi)
     }
@@ -148,6 +210,17 @@ class PlannerViewModel(
     private fun formatDailyRhythm(seconds: Long): String {
         val hours = seconds / 3_600L
         return "$hours h/dia"
+    }
+
+    /** Converte o tempo de calendário em tempo efetivamente jogável. */
+    private fun calculateAvailablePlayingSeconds(
+        secondsUntilRelease: Long,
+        dailyRhythmSeconds: Long
+    ): Long = if (dailyRhythmSeconds > 0L) {
+        secondsUntilRelease / 86_400L * dailyRhythmSeconds +
+            ((secondsUntilRelease % 86_400L) * dailyRhythmSeconds) / 86_400L
+    } else {
+        0L
     }
 
     companion object {

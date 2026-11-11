@@ -1,11 +1,5 @@
 package io.github.carvalhoxx.gamevault.ui.viewmodel
 
-/**
- * Estado imutável consumido pela tela Agenda.
- *
- * Nenhuma entidade do Room atravessa esta fronteira: a tela recebe somente
- * valores já preparados para apresentação.
- */
 sealed interface PlannerUiState {
     data object Idle : PlannerUiState
 
@@ -19,6 +13,16 @@ sealed interface PlannerUiState {
         val tempoDisponivel: String,
         val diasRestantes: String,
         val avisoSobreposicao: String?,
+        val sugestoes: List<PlannerSuggestionUi> = emptyList(),
+        val lancamentos: List<PlannerReleaseUi> = emptyList()
+    ) : PlannerUiState
+
+    /** Estado visual quando não há jogo em foco, mas ainda há tempo livre antes do próximo lançamento. */
+    data class Livre(
+        val ritmoDiario: String,
+        val proximoLancamento: PlannerReleaseUi?,
+        val tempoDisponivel: String,
+        val diasRestantes: String,
         val sugestoes: List<PlannerSuggestionUi> = emptyList(),
         val lancamentos: List<PlannerReleaseUi> = emptyList()
     ) : PlannerUiState

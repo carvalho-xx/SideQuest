@@ -35,8 +35,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.carvalhoxx.gamevault.ui.components.GameCoverArtwork
 import io.github.carvalhoxx.gamevault.ui.theme.AmberBrass
@@ -58,7 +60,13 @@ import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerUiState
 @Composable
 fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -> Unit) {
     var gapAberta by remember { mutableStateOf(false) }
-    val gapFillers = (uiState as? PlannerUiState.Ready)?.sugestoes.orEmpty()
+    // A agenda livre também possui sugestões. Antes, a folha era preparada
+    // apenas para Ready e o botão "VER FILA" não fazia nada nesse estado.
+    val gapFillers = when (uiState) {
+        is PlannerUiState.Ready -> uiState.sugestoes
+        is PlannerUiState.Livre -> uiState.sugestoes
+        else -> emptyList()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(CarbonMatteBackground),
@@ -85,6 +93,25 @@ fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -> Unit) {
                 if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
                 if (uiState.sugestoes.isNotEmpty()) item { GapFillersCard(uiState.sugestoes) { gapAberta = true } }
             }
+            is PlannerUiState.Livre -> {
+                item {
+                    PlannerCard {
+                        SectionLabel("TEMPO LIVRE ATÉ A PRÓXIMA ESTREIA")
+                        Text(
+                            "Você não está jogando agora. Há ${uiState.tempoDisponivel} disponíveis na sua agenda.",
+                            color = AshGrey,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            uiState.diasRestantes,
+                            color = EmberOrangeGlow,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+                if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
+                if (uiState.sugestoes.isNotEmpty()) item { GapFillersCard(uiState.sugestoes) { gapAberta = true } }
+            }
             is PlannerUiState.AgendaDedicadaTbd -> {
                 item { DedicatedAgendaCard(uiState) }
                 if (uiState.lancamentos.isNotEmpty()) item { ReleaseCarousel(uiState.lancamentos) }
@@ -108,6 +135,7 @@ fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -> Unit) {
 
 private fun PlannerUiState.ritmoOuPadrao() = when (this) {
     is PlannerUiState.Ready -> ritmoDiario
+    is PlannerUiState.Livre -> ritmoDiario
     is PlannerUiState.AgendaDedicadaTbd -> ritmoDiario
     else -> "—"
 }
@@ -118,7 +146,8 @@ private fun ConflictCard(state: PlannerUiState.Ready) {
         SectionLabel("CRONOGRAMA ATÉ A PRÓXIMA ESTREIA")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GameInfoBox("JOGANDO AGORA", state.jogoAtual.titulo, "Restam ${state.tempoRestante}", state.jogoAtual.coverUrl, EmberOrangeGlow, Modifier.weight(1f))
-            state.proximoLancamento?.let { GameInfoBox("PRÓXIMA ESTREIA", it.titulo, "${it.dataLancamento} • ${it.contagemRegressiva}", it.coverUrl, AmberBrass, Modifier.weight(1f)) }
+            // A contagem regressiva já inclui a data (ex.: "19 NOV • 19d").
+            state.proximoLancamento?.let { GameInfoBox("PRÓXIMA ESTREIA", it.titulo, it.contagemRegressiva, it.coverUrl, AmberBrass, Modifier.weight(1f)) }
         }
         Text("Ritmo diário: ${state.ritmoDiario}  •  ${state.diasRestantes}", color = AshGrey, style = MaterialTheme.typography.bodySmall)
         Text("Tempo jogável disponível até a estreia: ${state.tempoDisponivel}", color = BoneCream, style = MaterialTheme.typography.bodyMedium)
@@ -168,7 +197,7 @@ private fun GapFillersSheet(games: List<PlannerSuggestionUi>, onStart: (Long) ->
                 GameCoverArtwork(game.titulo, game.coverUrl, modifier = Modifier.size(58.dp, 78.dp), cornerRadius = 8.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(game.titulo, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text(game.duracao, color = EmberOrangeGlow, style = MaterialTheme.typography.labelMedium)
+                    Text("Restam ${game.duracao}", color = EmberOrangeGlow, style = MaterialTheme.typography.labelMedium)
                     Button(onClick = { onStart(game.id) }, colors = ButtonDefaults.buttonColors(containerColor = EmberOrangePrimary, contentColor = CarbonMatteBackground), shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                         Text("Iniciar jornada", fontWeight = FontWeight.ExtraBold)
                     }
@@ -203,12 +232,54 @@ private fun DedicatedAgendaCard(state: PlannerUiState.AgendaDedicadaTbd) {
 }
 
 @Composable private fun GameInfoBox(label: String, title: String, meta: String, coverUrl: String?, accent: Color, modifier: Modifier) {
-    Row(modifier.border(1.dp, accent.copy(alpha = .4f), RoundedCornerShape(12.dp)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        GameCoverArtwork(title, coverUrl, modifier = Modifier.size(58.dp, 78.dp), cornerRadius = 8.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, color = accent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-            Text(title, color = BoneCream, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), maxLines = 2)
-            Text(meta, color = AshGrey, style = MaterialTheme.typography.labelSmall)
+    Row(
+        modifier = modifier
+            .height(158.dp)
+            .border(1.dp, accent.copy(alpha = .4f), RoundedCornerShape(12.dp))
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(label, color = accent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Área fixa para as duas capas: o conteúdo da imagem não altera o cartão.
+            GameCoverArtwork(title, coverUrl, modifier = Modifier.size(width = 64.dp, height = 84.dp), cornerRadius = 8.dp)
+            // Data e contagem regressiva ocupam linhas independentes para a data
+            // nunca ser quebrada no meio (ex.: "19/11/20" + "26").
+            val metaLines = meta.split(" • ")
+            if (metaLines.size > 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    metaLines.forEach { line ->
+                        Text(
+                            line,
+                            color = AshGrey,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    meta,
+                    color = AshGrey,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
         }
     }
 }
