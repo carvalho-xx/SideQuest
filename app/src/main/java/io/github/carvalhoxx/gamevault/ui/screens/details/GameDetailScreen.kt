@@ -49,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.util.TimeFormatUtils

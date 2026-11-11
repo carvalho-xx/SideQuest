@@ -1,9 +1,29 @@
 import java.util.Properties
+import io.gitlab.arturbosch.detekt.Detekt
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.detekt)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    baseline = file("$rootDir/config/detekt/baseline.xml")
+    source.setFrom(files("src/main/java", "src/main/kotlin"))
+}
+
+tasks.withType<Detekt>().configureEach {
+    jvmTarget = "11"
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        txt.required.set(true)
+        sarif.required.set(false)
+        md.required.set(false)
+    }
 }
 
 val localProps = Properties().apply {

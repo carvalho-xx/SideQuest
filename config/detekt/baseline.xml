@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:CsvGameImporter.kt$CsvGameImporter$fun parseCsvStream( inputStream: InputStream, existingNormalizedTitles: Set&lt;String&gt; = emptySet() ): CsvImportSummary</ID>
+    <ID>CyclomaticComplexMethod:DashboardScreen.kt$@Composable private fun ConsolePlayingHeroSection( game: GameEntity, nowMillis: Long, onAddGameClick: () -&gt; Unit, onCardClick: () -&gt; Unit, onToggleTimer: () -&gt; Unit, onOpenManualInput: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:GameDetailScreen.kt$@OptIn(ExperimentalLayoutApi::class) @Composable fun GameDetailScreen( game: GameEntity?, nowMillis: Long, onNavigateBack: () -&gt; Unit, onToggleStopwatch: (GameEntity) -&gt; Unit, onUpdateExactTime: (gameId: Long, hours: Long, minutes: Long, seconds: Long) -&gt; Unit, onUpdateRatingAndMemory: (gameId: Long, rating: Float?, memoryNote: String?, isPersonalGoty: Boolean) -&gt; Unit, onMarkAsCompleted: (GameEntity) -&gt; Unit, onSaveGame: (GameEntity) -&gt; Unit, onDeleteGame: (Long) -&gt; Unit, onRefreshOnlineMetadata: (Long) -&gt; Unit = {}, modifier: Modifier = Modifier )</ID>
+    <ID>CyclomaticComplexMethod:GameDialogs.kt$@OptIn(ExperimentalLayoutApi::class) @Composable fun GameFormDialog( initialGame: GameEntity? = null, onDismiss: () -&gt; Unit, onSave: (GameEntity) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService$internal fun parseHltbGamePageHtml(base: RemoteGameMetadata, html: String): RemoteGameMetadata</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService$internal fun parseHowLongToBeatResponseJson(json: String): List&lt;RemoteGameMetadata&gt;</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService$private fun mergeMetadataAndHltb( primary: RemoteGameMetadata, hltb: RemoteGameMetadata? ): RemoteGameMetadata</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService$suspend fun fetchBestMatchForTitle( title: String, existingExternalId: String? = null ): RemoteGameMetadata?</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService$suspend fun searchGames(query: String): List&lt;RemoteGameMetadata&gt;</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService.Companion$internal fun stripNestedStructures(jsonObject: String): String</ID>
+    <ID>CyclomaticComplexMethod:GameMetadataService.kt$GameMetadataService.Companion$internal fun translateGenreToPtBr(genre: String): String</ID>
+    <ID>CyclomaticComplexMethod:GameRepository.kt$GameRepository$suspend fun syncMissingMetadataBatch( onProgress: (completed: Int, total: Int) -&gt; Unit = { _, _ -&gt; } ): Int</ID>
+    <ID>CyclomaticComplexMethod:LibraryScreen.kt$@Composable fun LibraryScreen( allGames: List&lt;GameEntity&gt;, filteredGames: List&lt;GameEntity&gt;, filterState: LibraryFilterState, rouletteWinner: GameEntity?, nowMillis: Long, onSearchQueryChange: (String) -&gt; Unit, onSelectStatusTab: (GameStatus?) -&gt; Unit, onSelectPlatform: (String?) -&gt; Unit, onSelectPriority: (PriorityTier?) -&gt; Unit, onSpinRoulette: () -&gt; Unit, onDismissRoulette: () -&gt; Unit, onStartPlayingFromRoulette: (GameEntity) -&gt; Unit, onOpenGameDetails: (Long) -&gt; Unit, onSaveGame: (GameEntity) -&gt; Unit, onImportCsvUri: (Uri) -&gt; Unit, onSyncMissingMetadata: () -&gt; Unit = {}, isSyncingLibrary: Boolean = false, syncProgressLabel: String? = null, modifier: Modifier = Modifier )</ID>
+    <ID>CyclomaticComplexMethod:PlannerScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PlannerScreen(uiState: PlannerUiState, onEvent: (PlannerEvent) -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:PlannerViewModel.kt$PlannerViewModel$private fun buildState( jogoAtual: GameEntity?, lancamentos: List&lt;GameEntity&gt;, jogos: List&lt;GameEntity&gt;, now: Long ): PlannerUiState</ID>
+    <ID>CyclomaticComplexMethod:RemoteImageCache.kt$RemoteImageCache$internal fun trimLetterboxBorders(source: Bitmap): Bitmap</ID>
+  </CurrentIssues>
+</SmellBaseline>

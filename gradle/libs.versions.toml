@@ -11,6 +11,7 @@ composeBom = "2026.02.01"
 room = "2.8.5"
 ksp = "2.2.10-2.0.2"
 navigationCompose = "2.10.2"
+detekt = "1.23.8"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,5 +39,5 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
