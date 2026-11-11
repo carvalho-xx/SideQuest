@@ -48,6 +48,7 @@ import io.github.carvalhoxx.gamevault.ui.screens.dashboard.DashboardScreen
 import io.github.carvalhoxx.gamevault.ui.screens.details.GameDetailScreen
 import io.github.carvalhoxx.gamevault.ui.screens.library.LibraryScreen
 import io.github.carvalhoxx.gamevault.ui.screens.planner.PlannerScreen
+import io.github.carvalhoxx.gamevault.ui.screens.profile.ProfileScreen
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateBackground
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateElevated
 import io.github.carvalhoxx.gamevault.ui.theme.DeepSlateSurface
@@ -56,6 +57,7 @@ import io.github.carvalhoxx.gamevault.ui.theme.TextPrimary
 import io.github.carvalhoxx.gamevault.ui.theme.TextSecondary
 import io.github.carvalhoxx.gamevault.ui.viewmodel.GameVaultViewModel
 import io.github.carvalhoxx.gamevault.ui.viewmodel.PlannerViewModel
+import io.github.carvalhoxx.gamevault.ui.viewmodel.ProfileViewModel
 
 enum class BottomNavTab(
     val route: String,
@@ -72,6 +74,7 @@ enum class BottomNavTab(
 fun SideQuestNavGraph(
     viewModel: GameVaultViewModel,
     plannerViewModel: PlannerViewModel,
+    profileViewModel: ProfileViewModel,
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
@@ -223,6 +226,13 @@ fun SideQuestNavGraph(
                 PhasePlaceholderScreen(
                     title = "Lista de Desejos e Jogo do Ano",
                     subtitle = "Radar de promoções e Desempate de Jogo do Ano serão expandidos nas Fases 5 e 6 (${dashboardState.wishlistGames.size} itens na lista de desejos)."
+                )
+            }
+
+            composable("profile") {
+                ProfileScreen(
+                    viewModel = profileViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

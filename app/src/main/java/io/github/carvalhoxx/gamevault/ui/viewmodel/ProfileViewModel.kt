@@ -1,6 +1,7 @@
 package io.github.carvalhoxx.gamevault.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.carvalhoxx.gamevault.data.local.entity.UserProfileEntity
 import io.github.carvalhoxx.gamevault.data.repository.UserRepository
@@ -49,8 +50,15 @@ class ProfileViewModel(
         }
     }
 
-    private companion object {
+    companion object {
         const val SECONDS_PER_MINUTE = 60L
         const val SECONDS_PER_HOUR = 3_600L
+
+        fun provideFactory(repository: UserRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    ProfileViewModel(repository) as T
+            }
     }
 }
