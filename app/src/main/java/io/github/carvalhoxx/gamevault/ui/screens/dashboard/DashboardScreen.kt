@@ -62,7 +62,6 @@ import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderHairline
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonBorderSubtle
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonElevated
 import io.github.carvalhoxx.gamevault.ui.theme.CarbonMatteBackground
-import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangeGlow
 import io.github.carvalhoxx.gamevault.ui.theme.EmberOrangePrimary
 import io.github.carvalhoxx.gamevault.ui.theme.SageClear
 import io.github.carvalhoxx.gamevault.ui.theme.SlateMuted
@@ -300,52 +299,7 @@ private fun ConsolePlayingHeroSection(
     onToggleTimer: () -> Unit,
     onOpenManualInput: () -> Unit
 ) {
-    val liveTotalSeconds = game.getLiveTimePlayedSeconds(nowMillis)
-    val isTimerRunning = game.activeTimerStartTime != null
-    val hltbTargetSeconds = game.getEffectiveDurationSeconds()
-    val isBeyondHltb = hltbTargetSeconds != null && liveTotalSeconds > hltbTargetSeconds
-
-    val h = liveTotalSeconds / 3600L
-    val m = (liveTotalSeconds % 3600L) / 60L
-    val s = liveTotalSeconds % 60L
-    val formattedStopwatch = String.format(Locale.US, "%02d:%02d:%02d", h, m, s)
-
-    val hltbEstimateLabel = if (hltbTargetSeconds != null && hltbTargetSeconds > 0L) {
-        "de ${hltbTargetSeconds / 3600L}h estimadas"
-    } else {
-        "duração a definir"
-    }
-
-    val fillFraction = when {
-        hltbTargetSeconds == null || hltbTargetSeconds <= 0L -> 0.35f
-        liveTotalSeconds >= hltbTargetSeconds -> 1f
-        else -> (liveTotalSeconds.toFloat() / hltbTargetSeconds.toFloat()).coerceIn(0.04f, 1f)
-    }
-
-    val progressHumanSubtext = when {
-        hltbTargetSeconds == null || hltbTargetSeconds <= 0L ->
-            "No seu próprio ritmo • Duração oficial ainda não definida"
-        isBeyondHltb -> {
-            val extraHours = (liveTotalSeconds - hltbTargetSeconds) / 3600L
-            "Explorando além da média (+${extraHours}h)"
-        }
-        else -> {
-            val remainingHours = ((hltbTargetSeconds - liveTotalSeconds) / 3600L).coerceAtLeast(1L)
-            val pct = ((liveTotalSeconds * 100L) / hltbTargetSeconds).coerceIn(1L, 99L)
-            "Restam ~${remainingHours}h para a média da campanha • ${pct}%"
-        }
-    }
-
-    val genreFirst = game.genres.split(",").firstOrNull()?.trim().orEmpty()
-    val metaLine = buildString {
-        append(game.platform)
-        if (genreFirst.isNotBlank()) {
-            append(" • ")
-            append(genreFirst)
-        }
-        append(" • ")
-        append(game.targetCompletionStyle.shortLabel)
-    }
+    val heroContent = consolePlayingHeroContent(game, nowMillis)
 
     Box(
         modifier = Modifier
@@ -365,186 +319,303 @@ private fun ConsolePlayingHeroSection(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 18.dp)
         ) {
-            ConsoleTopBar(onAddGameClick = onAddGameClick)
+            ConsoleTopBar(
+                onAddGameClick = onAddGameClick
+            )
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Pôster 2:3 (104x156dp) + Metadados limpos ao lado
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onCardClick),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                GameCoverArtwork(
-                    title = game.title,
-                    coverUrl = game.coverUrl,
-                    isHallOfFame = game.isHallOfFame,
-                    modifier = Modifier
-                        .width(104.dp)
-                        .height(156.dp),
-                    cornerRadius = 10.dp
-                )
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(bottom = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(if (isTimerRunning) SageClear else EmberOrangePrimary)
-                        )
-                        Text(
-                            text = if (isTimerRunning) "SESSÃO AO VIVO" else "JOGANDO AGORA",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = if (isTimerRunning) SageClear else EmberOrangePrimary,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp
-                            )
-                        )
-                    }
-
-                    Text(
-                        text = game.title,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            color = BoneCream,
-                            fontWeight = FontWeight.ExtraBold,
-                            lineHeight = 28.sp
-                        ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Text(
-                        text = metaLine,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = AshGrey,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+            ConsoleHeroGameSummary(
+                game = game,
+                isTimerRunning = heroContent.isTimerRunning,
+                metaLine = heroContent.metaLine,
+                onCardClick = onCardClick
+            )
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Cronômetro Manual + Referência HLTB em destaque hierárquico direto no fundo
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = formattedStopwatch,
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        color = BoneCream,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 34.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                )
-                Text(
-                    text = hltbEstimateLabel,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = AshGrey,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    modifier = Modifier.padding(bottom = 5.dp)
-                )
-            }
+            ActiveTimerSection(
+                formattedStopwatch = heroContent.formattedStopwatch,
+                hltbEstimateLabel = heroContent.hltbEstimateLabel
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Barra de progresso fina de 5dp
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(CarbonBorderHairline)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fillFraction)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(
-                            if (isBeyondHltb) {
-                                Brush.horizontalGradient(listOf(EmberOrangePrimary, AmberBrass))
-                            } else {
-                                Brush.horizontalGradient(listOf(EmberOrangePrimary, EmberOrangePrimary))
-                            }
-                        )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = progressHumanSubtext,
-                style = MaterialTheme.typography.bodySmall.copy(color = AshGrey)
+            HeroProgressSection(
+                fillFraction = heroContent.fillFraction,
+                isBeyondHltb = heroContent.isBeyondHltb,
+                progressHumanSubtext = heroContent.progressHumanSubtext
             )
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Identidade Tátil: ▶ CONTINUAR SESSÃO (Ember Orange, 52dp) + Tempo manual (52dp)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = onToggleTimer,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isTimerRunning) AmberBrass else EmberOrangePrimary
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                ) {
-                    Text(
-                        text = if (isTimerRunning) "⏹ PARAR SESSÃO" else "▶ CONTINUAR SESSÃO",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = CarbonMatteBackground,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.6.sp
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            HeroSessionActions(
+                isTimerRunning = heroContent.isTimerRunning,
+                onToggleTimer = onToggleTimer,
+                onOpenManualInput = onOpenManualInput
+            )
+        }
+    }
+}
 
-                Surface(
-                    color = CarbonElevated,
-                    shape = RoundedCornerShape(10.dp),
+private data class ConsolePlayingHeroContent(
+    val isTimerRunning: Boolean,
+    val formattedStopwatch: String,
+    val hltbEstimateLabel: String,
+    val fillFraction: Float,
+    val isBeyondHltb: Boolean,
+    val progressHumanSubtext: String,
+    val metaLine: String
+)
+
+private fun consolePlayingHeroContent(
+    game: GameEntity,
+    nowMillis: Long
+): ConsolePlayingHeroContent {
+    val liveTotalSeconds = game.getLiveTimePlayedSeconds(nowMillis)
+    val isTimerRunning = game.activeTimerStartTime != null
+    val hltbTargetSeconds = game.getEffectiveDurationSeconds()
+    val isBeyondHltb = hltbTargetSeconds != null && liveTotalSeconds > hltbTargetSeconds
+    val formattedStopwatch = String.format(
+        Locale.US,
+        "%02d:%02d:%02d",
+        liveTotalSeconds / 3600L,
+        (liveTotalSeconds % 3600L) / 60L,
+        liveTotalSeconds % 60L
+    )
+    val hltbEstimateLabel = if (hltbTargetSeconds != null && hltbTargetSeconds > 0L) {
+        "de ${hltbTargetSeconds / 3600L}h estimadas"
+    } else {
+        "duração a definir"
+    }
+    val fillFraction = when {
+        hltbTargetSeconds == null || hltbTargetSeconds <= 0L -> 0.35f
+        liveTotalSeconds >= hltbTargetSeconds -> 1f
+        else -> (liveTotalSeconds.toFloat() / hltbTargetSeconds.toFloat()).coerceIn(0.04f, 1f)
+    }
+    val progressHumanSubtext = when {
+        hltbTargetSeconds == null || hltbTargetSeconds <= 0L ->
+            "No seu próprio ritmo • Duração oficial ainda não definida"
+        isBeyondHltb -> {
+            val extraHours = (liveTotalSeconds - hltbTargetSeconds) / 3600L
+            "Explorando além da média (+${extraHours}h)"
+        }
+        else -> {
+            val remainingHours = ((hltbTargetSeconds - liveTotalSeconds) / 3600L).coerceAtLeast(1L)
+            val pct = ((liveTotalSeconds * 100L) / hltbTargetSeconds).coerceIn(1L, 99L)
+            "Restam ~${remainingHours}h para a média da campanha • ${pct}%"
+        }
+    }
+    val genreFirst = game.genres.split(",").firstOrNull()?.trim().orEmpty()
+    val metaLine = buildString {
+        append(game.platform)
+        if (genreFirst.isNotBlank()) {
+            append(" • ")
+            append(genreFirst)
+        }
+        append(" • ")
+        append(game.targetCompletionStyle.shortLabel)
+    }
+    return ConsolePlayingHeroContent(
+        isTimerRunning = isTimerRunning,
+        formattedStopwatch = formattedStopwatch,
+        hltbEstimateLabel = hltbEstimateLabel,
+        fillFraction = fillFraction,
+        isBeyondHltb = isBeyondHltb,
+        progressHumanSubtext = progressHumanSubtext,
+        metaLine = metaLine
+    )
+}
+
+@Composable
+private fun ConsoleHeroGameSummary(
+    game: GameEntity,
+    isTimerRunning: Boolean,
+    metaLine: String,
+    onCardClick: () -> Unit
+) {
+    // Pôster 2:3 (104x156dp) + Metadados limpos ao lado
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onCardClick),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        GameCoverArtwork(
+            title = game.title,
+            coverUrl = game.coverUrl,
+            isHallOfFame = game.isHallOfFame,
+            modifier = Modifier
+                .width(104.dp)
+                .height(156.dp),
+            cornerRadius = 10.dp
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
                     modifier = Modifier
-                        .width(134.dp)
-                        .height(52.dp)
-                        .border(1.dp, CarbonBorderSubtle, RoundedCornerShape(10.dp))
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(onClick = onOpenManualInput)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Tempo manual",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                color = BoneCream,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(if (isTimerRunning) SageClear else EmberOrangePrimary)
+                )
+                Text(
+                    text = if (isTimerRunning) "SESSÃO AO VIVO" else "JOGANDO AGORA",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = if (isTimerRunning) SageClear else EmberOrangePrimary,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                )
+            }
+            Text(
+                text = game.title,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    color = BoneCream,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 28.sp
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = metaLine,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = AshGrey,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActiveTimerSection(
+    formattedStopwatch: String,
+    hltbEstimateLabel: String
+) {
+    // Cronômetro Manual + Referência HLTB em destaque hierárquico direto no fundo
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = formattedStopwatch,
+            style = MaterialTheme.typography.headlineLarge.copy(
+                color = BoneCream,
+                fontWeight = FontWeight.Black,
+                fontSize = 34.sp,
+                letterSpacing = (-0.5).sp
+            )
+        )
+        Text(
+            text = hltbEstimateLabel,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = AshGrey,
+                fontWeight = FontWeight.Medium
+            ),
+            modifier = Modifier.padding(bottom = 5.dp)
+        )
+    }
+}
+
+@Composable
+private fun HeroProgressSection(
+    fillFraction: Float,
+    isBeyondHltb: Boolean,
+    progressHumanSubtext: String
+) {
+    // Barra de progresso fina de 5dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(5.dp)
+            .clip(RoundedCornerShape(50))
+            .background(CarbonBorderHairline)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fillFraction)
+                .height(5.dp)
+                .clip(RoundedCornerShape(50))
+                .background(
+                    if (isBeyondHltb) {
+                        Brush.horizontalGradient(listOf(EmberOrangePrimary, AmberBrass))
+                    } else {
+                        Brush.horizontalGradient(listOf(EmberOrangePrimary, EmberOrangePrimary))
                     }
-                }
+                )
+        )
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = progressHumanSubtext,
+        style = MaterialTheme.typography.bodySmall.copy(color = AshGrey)
+    )
+}
+
+@Composable
+private fun HeroSessionActions(
+    isTimerRunning: Boolean,
+    onToggleTimer: () -> Unit,
+    onOpenManualInput: () -> Unit
+) {
+    // Identidade Tátil: ▶ CONTINUAR SESSÃO (Ember Orange, 52dp) + Tempo manual (52dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Button(
+            onClick = onToggleTimer,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isTimerRunning) AmberBrass else EmberOrangePrimary
+            ),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp)
+        ) {
+            Text(
+                text = if (isTimerRunning) "⏹ PARAR SESSÃO" else "▶ CONTINUAR SESSÃO",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = CarbonMatteBackground,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.6.sp
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Surface(
+            color = CarbonElevated,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier
+                .width(134.dp)
+                .height(52.dp)
+                .border(1.dp, CarbonBorderSubtle, RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onOpenManualInput)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Tempo manual",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = BoneCream,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
             }
         }
     }
@@ -573,7 +644,9 @@ private fun ConsoleEmptyPlayingHeroSection(
                 .padding(horizontal = 24.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            ConsoleTopBar(onAddGameClick = onAddGameClick)
+            ConsoleTopBar(
+                onAddGameClick = onAddGameClick
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "JOGANDO AGORA",
