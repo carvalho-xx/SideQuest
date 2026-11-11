@@ -21,7 +21,8 @@ class CalculateScheduleOverlapUseCase(
     operator fun invoke(
         currentGame: GameEntity,
         dayOneGames: List<GameEntity>,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        dailyRhythmSeconds: Long = getGlobalDailyRhythmUseCase()
     ): ScheduleOverlapResult {
         val nextDayOne = dayOneGames
             .asSequence()
@@ -52,7 +53,6 @@ class CalculateScheduleOverlapUseCase(
         val calendarSecondsUntilRelease = nextDayOne?.releaseDate
             ?.let { secondsUntil(it, nowMillis) }
             ?: 0L
-        val dailyRhythmSeconds = getGlobalDailyRhythmUseCase()
         val availablePlayingSeconds = if (dailyRhythmSeconds > 0L) {
             calendarSecondsUntilRelease / 86_400L * dailyRhythmSeconds +
                 (calendarSecondsUntilRelease % 86_400L * dailyRhythmSeconds) / 86_400L

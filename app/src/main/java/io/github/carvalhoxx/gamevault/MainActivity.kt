@@ -24,7 +24,10 @@ class MainActivity : ComponentActivity() {
                     factory = GameVaultViewModel.provideFactory(appContainer.gameRepository)
                 )
                 val plannerViewModel: PlannerViewModel = viewModel(
-                    factory = PlannerViewModel.provideFactory(appContainer.gameRepository)
+                    factory = PlannerViewModel.provideFactory(
+                        repository = appContainer.gameRepository,
+                        userRepository = appContainer.userRepository
+                    )
                 )
                 val profileViewModel: ProfileViewModel = viewModel(
                     factory = ProfileViewModel.provideFactory(appContainer.userRepository)

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.carvalhoxx.gamevault.data.local.entity.GameEntity
 import io.github.carvalhoxx.gamevault.data.repository.GameRepository
+import io.github.carvalhoxx.gamevault.data.repository.UserRepository
 import io.github.carvalhoxx.gamevault.domain.model.DurationResolution
 import io.github.carvalhoxx.gamevault.domain.model.GameStatus
 import io.github.carvalhoxx.gamevault.domain.model.ScheduleOverlapResult
@@ -40,22 +41,31 @@ class PlannerViewModel(
             combine(
                 repository.observeMainFocusGame(),
                 repository.observeDayOneGames(),
-                repository.observeAllGames()
-            ) { jogoAtual, lancamentos, jogos -> Triple(jogoAtual, lancamentos, jogos) }
-                .collectLatest { (jogoAtual, lancamentos, jogos) ->
+                repository.observeAllGames(),
+                getGlobalDailyRhythmUseCase.observe()
+            ) { jogoAtual, lancamentos, jogos, ritmo ->
+                PlannerInputs(jogoAtual, lancamentos, jogos, ritmo)
+            }.collectLatest { inputs ->
                     _state.value = PlannerUiState.Loading
-                    _state.value = buildState(jogoAtual, lancamentos, jogos, nowMillis())
+                    _state.value = buildState(
+                        inputs.jogoAtual,
+                        inputs.lancamentos,
+                        inputs.jogos,
+                        inputs.ritmo,
+                        nowMillis()
+                    )
                 }
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun buildState(
         jogoAtual: GameEntity?,
         lancamentos: List<GameEntity>,
         jogos: List<GameEntity>,
+        ritmo: Long,
         now: Long
     ): PlannerUiState {
-        val ritmo = getGlobalDailyRhythmUseCase()
         val lancamentosUi = lancamentos.map { it.toReleaseUi(now) }
         val proximoLancamento = lancamentos
             .asSequence()
@@ -143,7 +153,12 @@ class PlannerViewModel(
             )
         }
 
-        val overlap = calculateScheduleOverlapUseCase(jogoAtual, lancamentos, now)
+        val overlap = calculateScheduleOverlapUseCase(
+            currentGame = jogoAtual,
+            dayOneGames = lancamentos,
+            nowMillis = now,
+            dailyRhythmSeconds = ritmo
+        )
         val jogoUi = jogoAtual.toPlannerUi(now)
 
         if (getEffectiveDurationUseCase(jogoAtual) is DurationResolution.DurationTbdLock) {
@@ -224,11 +239,24 @@ class PlannerViewModel(
     }
 
     companion object {
-        fun provideFactory(repository: GameRepository): ViewModelProvider.Factory =
+        fun provideFactory(
+            repository: GameRepository,
+            userRepository: UserRepository? = null
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    PlannerViewModel(repository) as T
+                    PlannerViewModel(
+                        repository = repository,
+                        getGlobalDailyRhythmUseCase = GetGlobalDailyRhythmUseCase(userRepository)
+                    ) as T
             }
     }
+
+    private data class PlannerInputs(
+        val jogoAtual: GameEntity?,
+        val lancamentos: List<GameEntity>,
+        val jogos: List<GameEntity>,
+        val ritmo: Long
+    )
 }
